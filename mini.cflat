@@ -1,0 +1,8 @@
+# Program ’mini’
+# --------------
+# A minimal Cb program!
+
+int main ()
+{
+    putchar(’x’);
+}
