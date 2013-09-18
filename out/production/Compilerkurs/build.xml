@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<project name="Cflat" default="jar">
+
+  <target name="clean" description="Fjern genererte filer">
+    <delete dir="classes"/>
+    <delete file="Cflat.jar"/>
+  </target>
+
+  <target name="compile" description="Kompiler Java-programmet">
+    <mkdir dir="classes"/>
+    <javac srcdir="." destdir="classes"/>
+  </target>
+
+  <target name="jar" depends="compile" description="Lag en JAR-fil">
+    <jar destfile="Cflat.jar">
+      <fileset dir="classes" includes="**/*.class"/>
+      <manifest>
+	<attribute name="Main-Class" value="no.uio.ifi.cflat.cflat.Cflat"/>
+      </manifest>
+    </jar>
+  </target>
+</project>

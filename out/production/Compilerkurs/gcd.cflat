@@ -1,0 +1,29 @@
+# Program ’gcd’
+# -------------
+# A program to compute the greatest common divisor.
+
+int LF; /* Line feed */
+
+int gcd (int a, int b)
+{   /* Computes the gcd of a and b. */
+
+    while (a != b) {
+        if (a < b) {
+            b = b-a;
+        } else {
+            a = a-b;
+        }
+    }
+    return a;
+}
+
+int main ()
+{
+    int v1; int v2;
+
+    LF = 10; ;
+    putchar(’?’); putchar(’ ’);
+    v1 = getint(); v2 = getint();
+    putint(gcd(v1,v2)); putchar(LF);
+    exit(0);
+}

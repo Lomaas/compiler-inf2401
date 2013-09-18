@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="module_compilerkurs" default="compile.module.compilerkurs">
+  <dirname property="module.compilerkurs.basedir" file="${ant.file.module_compilerkurs}"/>
+  
+  <property name="module.jdk.home.compilerkurs" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.compilerkurs" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.compilerkurs" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.compilerkurs" value="${compiler.args}"/>
+  
+  <property name="compilerkurs.output.dir" value="${module.compilerkurs.basedir}/out/production/Compilerkurs"/>
+  <property name="compilerkurs.testoutput.dir" value="${module.compilerkurs.basedir}/out/test/Compilerkurs"/>
+  
+  <path id="compilerkurs.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="compilerkurs.module.production.classpath">
+    <path refid="${module.jdk.classpath.compilerkurs}"/>
+  </path>
+  
+  <path id="compilerkurs.runtime.production.module.classpath">
+    <pathelement location="${compilerkurs.output.dir}"/>
+  </path>
+  
+  <path id="compilerkurs.module.classpath">
+    <path refid="${module.jdk.classpath.compilerkurs}"/>
+    <pathelement location="${compilerkurs.output.dir}"/>
+  </path>
+  
+  <path id="compilerkurs.runtime.module.classpath">
+    <pathelement location="${compilerkurs.testoutput.dir}"/>
+    <pathelement location="${compilerkurs.output.dir}"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.compilerkurs">
+    <patternset refid="ignored.files"/>
+    <exclude name="out/**"/>
+    <exclude name="out/production/**"/>
+    <exclude name="out/production/Compilerkurs/**"/>
+    <exclude name="out/production/Compilerkurs/no/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/log/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/code/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/cflat/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/error/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/types/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/syntax/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/scanner/**"/>
+    <exclude name="out/production/Compilerkurs/no/uio/ifi/cflat/chargenerator/**"/>
+    <exclude name="out/production/Compilerkurs/.idea/**"/>
+    <exclude name="out/production/Compilerkurs/.idea/scopes/**"/>
+    <exclude name="out/production/Compilerkurs/.idea/copyright/**"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.compilerkurs">
+    <patternset refid="excluded.from.module.compilerkurs"/>
+  </patternset>
+  
+  <path id="compilerkurs.module.sourcepath">
+    <dirset dir="${module.compilerkurs.basedir}/../../Projects">
+      <include name="Compilerkurs"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.compilerkurs" depends="compile.module.compilerkurs.production,compile.module.compilerkurs.tests" description="Compile module Compilerkurs"/>
+  
+  <target name="compile.module.compilerkurs.production" depends="register.custom.compilers" description="Compile module Compilerkurs; production classes">
+    <mkdir dir="${compilerkurs.output.dir}"/>
+    <javac2 destdir="${compilerkurs.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.compilerkurs}/javac">
+      <compilerarg line="${compiler.args.compilerkurs}"/>
+      <bootclasspath refid="compilerkurs.module.bootclasspath"/>
+      <classpath refid="compilerkurs.module.production.classpath"/>
+      <src refid="compilerkurs.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.compilerkurs"/>
+    </javac2>
+    
+    <copy todir="${compilerkurs.output.dir}">
+      <fileset dir="${module.compilerkurs.basedir}">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.compilerkurs.tests" depends="register.custom.compilers,compile.module.compilerkurs.production" description="compile module Compilerkurs; test classes" unless="skip.tests"/>
+  
+  <target name="clean.module.compilerkurs" description="cleanup module">
+    <delete dir="${compilerkurs.output.dir}"/>
+    <delete dir="${compilerkurs.testoutput.dir}"/>
+  </target>
+</project>
