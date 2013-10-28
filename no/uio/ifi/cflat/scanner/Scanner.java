@@ -32,7 +32,6 @@ public class Scanner {
     public static int curLine, nextLine, nextNextLine;
     public static String word = "";
 
-
     public static void init() {
 
     }
@@ -278,7 +277,7 @@ public class Scanner {
     public static String readNextCharacters(){
         word += CharGenerator.curC;
 
-        while(CharGenerator.nextC != ' ' && !isEndOfWord(CharGenerator.nextC)){
+        while(!isEndOfWord(CharGenerator.nextC)){
             word += CharGenerator.nextC;
             CharGenerator.readNext();
         }
@@ -289,6 +288,10 @@ public class Scanner {
         switch(c)
         {
             case '(':
+                return true;
+            case ';':
+                return true;
+            case ' ':
                 return true;
             default:
                 return false;
