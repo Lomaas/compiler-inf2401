@@ -9,6 +9,24 @@ import no.uio.ifi.cflat.error.Error;
 import no.uio.ifi.cflat.log.Log;
 import static no.uio.ifi.cflat.scanner.Token.*;
 
+/**
+ *
+ - naming convention! Example for del1: submit a file named “sjo049-del1.zip”. In there, have a directory called “sjo049-del1”, in which you have all your stuff.
+
+ - build.xml file missing
+
+ - I can’t build your compiler on an ifilab machine because there is some problem with the charset you are using in your source files. I tried a bit, but could not figure out how to convert your files to something the java compiler would take (using the iconv command line tool). It is a requirement that your submissions work on an ifilab machine.
+
+ - can you handle negative numbers? (couldn’t check because of crash)
+
+ - m_name becomes two tokens
+
+ - ‘#’ would become a comment but shouldn’t
+
+ - don’t use Character.isLetter.
+
+ */
+
 /*
  * Module for forming characters into tokens.
  */
@@ -58,6 +76,7 @@ public class Scanner {
                 nextNextToken = eofToken;
             } else {
                 CharGenerator.readNext();
+                System.out.println(CharGenerator.curC);
 
                 switch(CharGenerator.curC){
                     case ' ' :
@@ -78,18 +97,30 @@ public class Scanner {
                         nextNextToken = Token.semicolonToken;
                         break;
                     case '=':
-                        if(CharGenerator.nextC == '=') nextNextToken = Token.equalToken;
-                        else nextNextToken = Token.assignToken;
-
+                        if(CharGenerator.nextC == '='){
+                            nextNextToken = Token.equalToken;
+                            CharGenerator.readNext();
+                        }
+                        else {
+                            nextNextToken = Token.assignToken;
+                        }
                         break;
                     case '>':
-                        if(CharGenerator.nextC == '=')  nextNextToken = Token.greaterEqualToken;
-                        else    nextNextToken = Token.greaterToken;
+                        if(CharGenerator.nextC == '='){
+                            nextNextToken = Token.greaterEqualToken;
+                            CharGenerator.readNext();
+                        }
+                        else
+                            nextNextToken = Token.greaterToken;
 
                         break;
                     case '<':
-                        if(CharGenerator.nextC == '=')  nextNextToken = Token.lessEqualToken;
-                        else    nextNextToken = Token.lessToken;
+                        if(CharGenerator.nextC == '='){
+                            nextNextToken = Token.lessEqualToken;
+                            CharGenerator.readNext();
+                        }
+                        else
+                            nextNextToken = Token.lessToken;
                         break;
                     case '+':
                         nextNextToken = Token.addToken;
@@ -114,10 +145,17 @@ public class Scanner {
                         break;
                     case '’':
                         CharGenerator.readNext();
-
                         nextNextNum = (int)CharGenerator.curC;
                         CharGenerator.readNext();
                         nextNextToken = Token.numberToken;
+                        break;
+                    case '\'':
+                        CharGenerator.readNext();
+                        System.out.println(CharGenerator.curC);
+                        nextNextNum = (int)CharGenerator.curC;
+                        nextNextToken = Token.numberToken;
+                        CharGenerator.readNext();
+                        System.out.println(CharGenerator.curC);
                         break;
                     case ']':
                         nextNextToken = Token.rightBracketToken;
@@ -129,13 +167,11 @@ public class Scanner {
                         }
                         else
                             Error.error(nextNextLine, "Illegal symbol" + CharGenerator.nextC + "!");
-
                         break;
                     default : {
                         // NameToken or NumberToken
-                        if(checkIsDigit())
+                        if(checkIsDigit(CharGenerator.curC))
                             createNumberToken();
-
                         else {
                             readNextCharacters();
                             Scanner.evaluateWord();
@@ -147,12 +183,6 @@ public class Scanner {
             }
         }
         Log.noteToken();
-    }
-
-    private static boolean isLetterAZ(char c) {
-        if(Character.isLetter(c) && c != 'æ' && c != 'ø' && c != 'å')
-            return true;
-        return false;
     }
 
     public static void check(Token t) {
@@ -173,10 +203,17 @@ public class Scanner {
         check(t1,t2);  readNext();
     }
 
-    public static boolean checkIsDigit(){
-
-        if(Character.isDigit(CharGenerator.curC))
+    public static boolean checkIsDigit(char k){
+        int c = (int) k;
+        System.out.print(c);
+        if(c == 1 ||c == 2 || c == 3 || c == 4 || c == 5 || c == 6 || c == 7 || c == 8 || c == 9
+            || c == -1 || c == -4 || c == -7|| c == -2 || c == -5 || c == -8 || c == -3 || c == -6 || c == -9)
+        {
+            System.out.println(c);
             return true;
+        }
+//        if(Character.isDigit(CharGenerator.curC))
+//            return true;
 
         return false;
     }
@@ -248,10 +285,9 @@ public class Scanner {
     public static String readNextCharacters(){
         word += CharGenerator.curC;
 
-        while(CharGenerator.nextC != ' ' && (Character.isDigit(CharGenerator.nextC) || Character.isLetter(CharGenerator.nextC))){
+        while(CharGenerator.nextC != ' ' && (checkIsDigit(CharGenerator.nextC) || Character.isLetter(CharGenerator.nextC))){
             word += CharGenerator.nextC;
             CharGenerator.readNext();
-
         }
         return word;
     }

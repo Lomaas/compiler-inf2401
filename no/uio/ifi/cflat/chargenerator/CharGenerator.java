@@ -58,7 +58,7 @@ public class CharGenerator {
         curC = nextC;
         if (! isMoreToRead()) return;
 
-        if(sourceLine.contains("#") || sourceLine.length() < 1) {
+        if(sourceLine.length() < 1) {
             // Read next line
             readNextLine();
             readNext();

@@ -38,32 +38,47 @@ public enum Token {
     subtractToken,
     whileToken;
 
+    // multiply og divide
     public static boolean isFactorOperator(Token t) {
         if(t == Token.multiplyToken || t == Token.divideToken)
             return true;
 
         return false;
     }
-
+    // + og -
     public static boolean isTermOperator(Token t) {
-        // TODO -- Must be changed in part 0:
+        if(t == Token.subtractToken || t == Token.addToken)
+            return true;
+
         return false;
     }
 
+    // greater, leseser notEqaul
     public static boolean isRelOperator(Token t) {
-        // TODO -- Must be changed in part 0:
-        return false;
+        boolean isRelOp = false;
+        isRelOp |= t == greaterEqualToken;
+        isRelOp |= t == greaterToken;
+        isRelOp |= t == lessToken;
+        isRelOp |= t == lessEqualToken;
+        isRelOp |= t == notEqualToken;
+        isRelOp |= t == equalToken;
+
+        return isRelOp;
     }
 
+    // Number, name
     public static boolean isOperand(Token t) {
-       if(t == Token.subtractToken || t == Token.addToken)
-           return true;
+        if(t == Token.numberToken || t == Token.nameToken)
+            return true;
 
         return false;
     }
+
 
     public static boolean isTypeName(Token t) {
-
-        return false;
+        boolean isRelOp = false;
+        isRelOp |= t == doubleToken;
+        isRelOp |= t == intToken;
+        return isRelOp;
     }
 }

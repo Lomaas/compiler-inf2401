@@ -54,12 +54,14 @@ public class Log {
         if (! doLogParser) return;
 
         // TODO -- Must be changed in part 1:
+        writeLogLine("Parser: " +symbol);
     }
 
     public static void leaveParser(String symbol) {
         if (! doLogParser) return;
 
         // TODO -- Must be changed in part 1:
+        writeLogLine("Parser: " + symbol);
     }
 
     /**
@@ -114,6 +116,7 @@ public class Log {
 
     public static void indentTree() {
         //-- Must be changed in part 1:
+
     }
 
     public static void outdentTree() {
