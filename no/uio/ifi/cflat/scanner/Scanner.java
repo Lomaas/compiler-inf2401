@@ -19,11 +19,6 @@ import static no.uio.ifi.cflat.scanner.Token.*;
 
  - can you handle negative numbers? (couldn’t check because of crash)
 
- - m_name becomes two tokens
-
- - ‘#’ would become a comment but shouldn’t
-
- - don’t use Character.isLetter.
 
  */
 
@@ -241,7 +236,6 @@ public class Scanner {
 
     public static void evaluateWord(){
         if(word.equals("int")){
-            // TODO Check for array
             nextNextToken = Token.intToken;
         }
         else if(word.equals("while")){
@@ -258,7 +252,6 @@ public class Scanner {
             nextNextToken = Token.ifToken;
         }
         else if(word.equals("double")){
-            // TODO Check for array
             nextNextToken = Token.doubleToken;
         }
         else if(word.equals("return")){
@@ -285,10 +278,21 @@ public class Scanner {
     public static String readNextCharacters(){
         word += CharGenerator.curC;
 
-        while(CharGenerator.nextC != ' ' && (checkIsDigit(CharGenerator.nextC) || Character.isLetter(CharGenerator.nextC))){
+        while(CharGenerator.nextC != ' ' && !isEndOfWord(CharGenerator.nextC)){
             word += CharGenerator.nextC;
             CharGenerator.readNext();
         }
         return word;
+    }
+
+    public static boolean isEndOfWord(char c){
+        switch(c)
+        {
+            case '(':
+                return true;
+            default:
+                return false;
+
+        }
     }
 }
