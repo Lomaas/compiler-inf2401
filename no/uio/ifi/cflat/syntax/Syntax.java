@@ -1053,6 +1053,8 @@ class Expression extends Operand {
 }
 
 class Factor extends Operator {
+    Operand startOperand = null;
+    Factor nextFactor = null;
 
     @Override
     void genCode(FuncDecl curFunc) {
@@ -1066,44 +1068,45 @@ class Factor extends Operator {
 
     static Factor parse(){
         Log.leaveParser("<factor>");
-
+        Operand lastOperand = null;
         Factor factor = new Factor();
 
-        Operand startOperator = Operand.parse();    // goes to next
+        Operand startOperand = Operand.parse();    // goes to next
         Operand iter = null;
+        lastOperand = startOperand;
 
         while(Token.isFactorOperator(Scanner.curToken)){
-            FactorOperator
-
-            startOperator.nextOperand = oper;
+            Scanner.readNext();         // skip factor operator
+            iter = Operand.parse();
+            lastOperand.nextOperand = iter;     // sett pointer to next
         }
         Log.leaveParser("</factor>");
         return factor;
     }
 };
 
-class FactorOperator extends  Operator {
-
-    @Override
-    void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
-    }
-
-    @Override
-    void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
-    }
-
-    static FactorOperator parse(){
-        Log.enterParser("<factor>");
-
-        FactorOperator factorOperator = new FactorOperator();
-        factorOperator.operand = Operand.parse();
-        Log.enterParser("</factor>");
-
-        return factorOperator;
-    }
-}
+//class FactorOperator extends  Operator {
+//
+//    @Override
+//    void genCode(FuncDecl curFunc) {
+//        //To change body of implemented methods use File | Settings | File Templates.
+//    }
+//
+//    @Override
+//    void printTree() {
+//        //To change body of implemented methods use File | Settings | File Templates.
+//    }
+//
+//    static FactorOperator parse(){
+//        Log.enterParser("<factor operator>");
+//
+//        FactorOperator factorOperator = new FactorOperator();
+//        factorOperator.operand = Operand.parse();
+//        Log.enterParser("</factor>");
+//
+//        return factorOperator;
+//    }
+//}
 
 
 /*
@@ -1114,7 +1117,6 @@ class Term extends SyntaxUnit {
     Factor factor;
     Factor firstFactor = null;
     Operator operator;
-
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -1128,13 +1130,17 @@ class Term extends SyntaxUnit {
         //-- Must be changed in part 1:
         Term term = new Term();
         term.factor = Factor.parse();
+        term.firstFactor = term.factor;
 
-        if(Token.isTermOperator(Scanner.curToken)){
-            term.operator = new AddOperator();
-            term.operator.opToken = Scanner.curToken;
-        }
-        else if(Token.isFactorOperator(Scanner.curToken)){
+        Factor iter = null;
+        Factor lastFactor = term.firstFactor;
 
+        while(Token.isTermOperator(Scanner.curToken)){
+            TermOperator termOperator = TermOperator.parse();
+            iter = Factor.parse();
+
+            lastFactor.nextFactor = iter;
+            lastFactor = iter;
         }
         return term;
     }
@@ -1157,7 +1163,7 @@ abstract class Operator extends SyntaxUnit {
     @Override void check(DeclList curDecls) {}
 }
 
-class AddOperator extends Operator {
+class TermOperator extends Operator {
 
     @Override
     void genCode(FuncDecl curFunc) {
@@ -1167,6 +1173,16 @@ class AddOperator extends Operator {
     @Override
     void printTree() {
         //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static TermOperator parse(){
+        Log.enterParser("<term operator>");
+
+        TermOperator termOperator = new TermOperator();
+        termOperator.opToken = Scanner.curToken;
+        Scanner.readNext();
+
+        Log.enterParser("</term operator>");
     }
 }
 
