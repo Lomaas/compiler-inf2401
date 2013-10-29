@@ -48,17 +48,11 @@ public class CharGenerator {
         return (sourceFile == null ? 0 : sourceFile.getLineNumber());
     }
 
-    /**
-     * Denne modulen vil lese kildefilen linje for linje,
-     * ignorere #-linjer og sende den resterende kildekoden tegn for tegn videre i to variabler:
-     * curC (med nåværende tegn) og nextC (med neste tegn).
-     * Metoden readNext vil klargjøre neste tegn.
-     * **/
     public static void readNext() {
         curC = nextC;
         if (! isMoreToRead()) return;
 
-        if(sourceLine.length() < 1) {
+        if(sourceLine.contains("#") || sourceLine.length() < 1) {
             // Read next line
             readNextLine();
             readNext();

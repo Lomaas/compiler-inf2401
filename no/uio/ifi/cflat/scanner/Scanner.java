@@ -9,18 +9,7 @@ import no.uio.ifi.cflat.error.Error;
 import no.uio.ifi.cflat.log.Log;
 import static no.uio.ifi.cflat.scanner.Token.*;
 
-/**
- *
- - naming convention! Example for del1: submit a file named “sjo049-del1.zip”. In there, have a directory called “sjo049-del1”, in which you have all your stuff.
 
- - build.xml file missing
-
- - I can’t build your compiler on an ifilab machine because there is some problem with the charset you are using in your source files. I tried a bit, but could not figure out how to convert your files to something the java compiler would take (using the iconv command line tool). It is a requirement that your submissions work on an ifilab machine.
-
- - can you handle negative numbers? (couldn’t check because of crash)
-
-
- */
 
 /*
  * Module for forming characters into tokens.
@@ -39,16 +28,6 @@ public class Scanner {
     public static void finish() {
 
     }
-
-    /**
-     * CurToken, NextToken og NextNextToken disse variablene er av klassen Token. curToken er det aktuelle symbolet vi skal analysere,
-     * mens nextToken og nextNextToken er de to etterfølgende symbolene. Variablene curLine, nextLine og nextNextLine vil inneholde
-     * linjenummeret for de tilsvarende symbolene. Om curToken er et nameToken, vil curName inneholde det aktuelle navnet,
-     * og om det er et numberToken, vil curNum inneholde tallverdien. Det tilsvarende gjelder for nextName og nextNum og
-     * for nextNextName og nextNextNum.
-     * Metoden readNext vil plassere de neste symbolene i curToken, nextToken og nextNextToken. Alle **-kommentarer vil bli oversett.
-     * Når det ikke er flere symboler igjen på filen, vil curToken-variabelen få verdien eofToken.
-     */
 
     public static void readNext() {
         curToken = nextToken;
@@ -70,7 +49,6 @@ public class Scanner {
                 nextNextToken = eofToken;
             } else {
                 CharGenerator.readNext();
-                System.out.println(CharGenerator.curC);
 
                 switch(CharGenerator.curC){
                     case ' ' :
@@ -126,7 +104,11 @@ public class Scanner {
                         nextNextToken = Token.commaToken;
                         break;
                     case '-':
-                        nextNextToken = Token.subtractToken;
+                        if(checkIsDigit(CharGenerator.nextC)){
+                            createNumberToken();
+                        }
+                        else
+                            nextNextToken = Token.subtractToken;
                         break;
                     case '/':
                         if(CharGenerator.nextC == '*')
@@ -144,12 +126,11 @@ public class Scanner {
                         nextNextToken = Token.numberToken;
                         break;
                     case '\'':
+                        System.out.println("is ' char");
                         CharGenerator.readNext();
-                        System.out.println(CharGenerator.curC);
                         nextNextNum = (int)CharGenerator.curC;
                         nextNextToken = Token.numberToken;
                         CharGenerator.readNext();
-                        System.out.println(CharGenerator.curC);
                         break;
                     case ']':
                         nextNextToken = Token.rightBracketToken;
@@ -199,15 +180,10 @@ public class Scanner {
 
     public static boolean checkIsDigit(char k){
         int c = (int) k;
-        System.out.print(c);
-        if(c == 1 ||c == 2 || c == 3 || c == 4 || c == 5 || c == 6 || c == 7 || c == 8 || c == 9
-            || c == -1 || c == -4 || c == -7|| c == -2 || c == -5 || c == -8 || c == -3 || c == -6 || c == -9)
-        {
-            System.out.println(c);
+        //System.out.print(c);
+
+        if(c >= 48 && c <= 57)
             return true;
-        }
-//        if(Character.isDigit(CharGenerator.curC))
-//            return true;
 
         return false;
     }
@@ -215,7 +191,7 @@ public class Scanner {
     public static void createNumberToken(){
         word+= CharGenerator.curC;
 
-        while(CharGenerator.nextC != ' ' && Character.isDigit(CharGenerator.nextC)){
+        while(CharGenerator.nextC != ' ' && checkIsDigit(CharGenerator.nextC)){
             CharGenerator.readNext();
             word+= CharGenerator.curC;
         }
@@ -234,6 +210,8 @@ public class Scanner {
     }
 
     public static void evaluateWord(){
+        System.out.println(word);
+
         if(word.equals("int")){
             nextNextToken = Token.intToken;
         }
@@ -266,14 +244,6 @@ public class Scanner {
         }
     }
 
-
-    public static Boolean isMainToken(String word){
-        if(word.equals("main")){
-            return true;
-        }
-        return false;
-    }
-
     public static String readNextCharacters(){
         word += CharGenerator.curC;
 
@@ -281,21 +251,31 @@ public class Scanner {
             word += CharGenerator.nextC;
             CharGenerator.readNext();
         }
+        System.out.println(word);
+
         return word;
     }
 
+    // Checks ASCII values
     public static boolean isEndOfWord(char c){
-        switch(c)
-        {
-            case '(':
-                return true;
-            case ';':
-                return true;
-            case ' ':
-                return true;
-            default:
-                return false;
+        int cast = (int) c;
+        //System.out.println(cast);
 
-        }
+        // A - Z
+        if(cast >= 65 && cast <= 90)
+            return false;
+        // a-z
+        if(cast >= 97 && cast <= 122)
+            return false;
+
+        // Numbers
+        if(cast >= 48 && cast <= 57)
+            return false;
+
+        // underscore
+        if(cast == 95)
+            return false;
+
+        return true;
     }
 }

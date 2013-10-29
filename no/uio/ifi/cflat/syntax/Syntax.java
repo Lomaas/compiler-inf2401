@@ -136,7 +136,10 @@ abstract class DeclList extends SyntaxUnit {
 
     void addDecl(Declaration d) {
         //-- Must be changed in part 1:
-        outerScope.addDecl(d);  // added
+//        if(firstDecl == null){
+//            firstDecl = d;
+//        }
+//        outerScope.addDecl(d);  // added
     }
 
     int dataSize() {
@@ -164,22 +167,34 @@ class GlobalDeclList extends DeclList {
     static GlobalDeclList parse() {
         GlobalDeclList gdl = new GlobalDeclList();
         System.out.println("globaldeclist");
+        Scanner.readNext();
+        Scanner.readNext();
+        Scanner.readNext();
+
         while (Token.isTypeName(Scanner.curToken)) {
+            System.out.println("Out in main loop");
             if (Scanner.nextToken == nameToken) {
+                System.out.println("NameToken " + Scanner.nextName);
+
                 if (Scanner.nextNextToken == leftParToken) {
+                    System.out.println("<Start> Function declaration");
                     gdl.addDecl(FuncDecl.parse());
+                    System.out.println("<End> Function declaration");
                 } else if (Scanner.nextNextToken == leftBracketToken) {
+                    System.out.println("Global array Decl");
+
                     gdl.addDecl(GlobalArrayDecl.parse());
                 } else {
-                    //-- Must be changed in part 1:
-                    // TODO Check global parameters
-                    System.out.println("Check global parameters");
+                    System.out.println("<Start> Global var decl");
                     gdl.addDecl(GlobalSimpleVarDecl.parse());
+                    System.out.println("<End> Global var decl");
                 }
             } else {
                 Error.expected("A declaration");
             }
         }
+        System.out.println("end of GlobalDecList parse");
+        System.out.println(Scanner.curToken);
         return gdl;
     }
 }
@@ -195,8 +210,29 @@ class LocalDeclList extends DeclList {
     }
 
     static LocalDeclList parse() {
-        //-- Must be changed in part 1:
-        return null;
+        System.out.println("Inside parse local dec list");
+        System.out.println(Scanner.curToken);
+        LocalDeclList ldl = new LocalDeclList();
+
+        while (Token.isTypeName(Scanner.curToken)) {
+            if (Scanner.nextToken == nameToken) {
+                System.out.println("NameToken " + Scanner.nextName);
+
+                if (Scanner.nextNextToken == leftBracketToken) {
+                    System.out.println("Local array Decl");
+                    ldl.addDecl(LocalArrayDecl.parse());
+                } else {
+                    System.out.println("<Start> Local var decl");
+                    ldl.addDecl(LocalSimpleVarDecl.parse());
+                    System.out.println("<End> Local var decl");
+                }
+            } else {
+                Error.expected("A declaration");
+            }
+        }
+        System.out.println("end of localDecList parse");
+
+        return ldl;
     }
 }
 
@@ -211,8 +247,21 @@ class ParamDeclList extends DeclList {
     }
 
     static ParamDeclList parse() {
+
         //-- Must be changed in part 1:
-        return null;
+        ParamDeclList paramDeclList = new ParamDeclList();
+
+        while(Scanner.curToken != rightParToken){
+            // Type, name
+            ParamDecl paramDecl = ParamDecl.parse();
+            paramDeclList.addDecl(paramDecl);
+
+            if(Scanner.curToken == commaToken){
+                Scanner.skip(commaToken);
+            }
+        }
+
+        return paramDeclList;
     }
 }
 
@@ -420,7 +469,16 @@ class LocalArrayDecl extends VarDecl {
     static LocalArrayDecl parse() {
         Log.enterParser("<var decl>");
 
-        //-- Must be changed in part 1:
+        LocalArrayDecl localArrayDecl = new LocalArrayDecl(Scanner.nextName);
+        localArrayDecl.type = Types.getType(Scanner.curToken);
+        Scanner.readNext(); // Skip type
+        Scanner.skip(nameToken);
+        Scanner.skip(leftBracketToken);
+        Number.parse();
+        Scanner.skip(rightBracketToken);
+        Scanner.skip(semicolonToken);
+
+        Log.enterParser("</var decl>");
         return null;
     }
 
@@ -458,8 +516,14 @@ class LocalSimpleVarDecl extends VarDecl {
     static LocalSimpleVarDecl parse() {
         Log.enterParser("<var decl>");
 
-        //-- Must be changed in part 1:
-        return null;
+        LocalSimpleVarDecl lvd = new LocalSimpleVarDecl(Scanner.nextName);
+        lvd.type = Types.getType(Scanner.curToken);
+        Scanner.readNext();                 // skip type
+        Scanner.skip(Token.nameToken);      // next should be name token
+        Scanner.skip(semicolonToken);
+
+        Log.enterParser("</var decl>");
+        return lvd;
     }
 }
 
@@ -492,9 +556,12 @@ class ParamDecl extends VarDecl {
 
     static ParamDecl parse() {
         Log.enterParser("<param decl>");
-
-        //-- Must be changed in part 1:
-        return null;
+        ParamDecl parDec = new ParamDecl(Scanner.nextName);
+        parDec.type = Types.getType(Scanner.curToken);
+        Scanner.readNext(); // skip type
+        Scanner.skip(nameToken);
+        Log.enterParser("</param decl>");
+        return parDec;
     }
 }
 
@@ -505,8 +572,7 @@ class ParamDecl extends VarDecl {
 class FuncDecl extends Declaration {
     //-- Must be changed in part 1+2:
     ParamDeclList paramDeclList;
-    StatmList body;
-
+    FuncBody body;
 
     FuncDecl(String n) {
         // Used for user functions:
@@ -542,14 +608,16 @@ class FuncDecl extends Declaration {
 
     static FuncDecl parse() {
         Log.enterParser("<func decl>");
+
         FuncDecl funcDecl = new FuncDecl(Scanner.nextName);
         funcDecl.type = Types.getType(Scanner.curToken);
+        Scanner.readNext(); // skip type
+        Scanner.skip(nameToken);
         Scanner.skip(leftParToken);
         funcDecl.paramDeclList = ParamDeclList.parse();
         Scanner.skip(rightParToken);
-        Scanner.skip(leftCurlToken);
-        funcDecl.body = StatmList.parse();
-        Scanner.skip(rightCurlToken);
+        funcDecl.body = FuncBody.parse();
+
         Log.enterParser("</func decl>");
 
         return funcDecl;
@@ -560,12 +628,49 @@ class FuncDecl extends Declaration {
     }
 }
 
+/*
+ */
+
+class FuncBody extends Statement {
+    StatmList body;
+    LocalDeclList localDeclList;
+
+    @Override
+    void check(DeclList curDecls) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static FuncBody parse(){
+        Log.enterParser("<func body>");
+
+        FuncBody fb = new FuncBody();
+        Scanner.skip(leftCurlToken);
+        fb.localDeclList = LocalDeclList.parse();
+        fb.body = StatmList.parse();
+        Scanner.skip(rightCurlToken);
+        Log.enterParser("</func body>");
+
+        return fb;
+    }
+}
 
 /*
  * A <statm list>.
  */
 class StatmList extends SyntaxUnit {
     //-- Must be changed in part 1:
+    LocalSimpleVarDecl varDecl;
+    Statement firstStatement = null;
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -580,8 +685,17 @@ class StatmList extends SyntaxUnit {
 
         StatmList sl = new StatmList();
         Statement lastStatm = null;
+
         while (Scanner.curToken != rightCurlToken) {
-            //-- Must be changed in part 1:
+            Statement statement = Statement.parse();
+
+            if(sl.firstStatement == null)
+                sl.firstStatement = statement;
+
+            if(lastStatm != null)
+                lastStatm.nextStatm = statement;
+
+            lastStatm = statement;
         }
 
         Log.leaveParser("</statm list>");
@@ -606,16 +720,15 @@ abstract class Statement extends SyntaxUnit {
         Statement s = null;
         if (Scanner.curToken==nameToken &&
                 Scanner.nextToken==leftParToken) {
-            //-- Must be changed in part 1:
+            s = CallStatm.parse();
         } else if (Scanner.curToken == nameToken) {
-
-            //-- Must be changed in part 1:
+            s = AssignStatm.parse();
         } else if (Scanner.curToken == forToken) {
-            //-- Must be changed in part 1:
+            s = ForStatm.parse();
         } else if (Scanner.curToken == ifToken) {
             s = IfStatm.parse();
         } else if (Scanner.curToken == returnToken) {
-            //-- Must be changed in part 1:
+            s = ReturnStatm.parse();
         } else if (Scanner.curToken == whileToken) {
             s = WhileStatm.parse();
         } else if (Scanner.curToken == semicolonToken) {
@@ -635,7 +748,7 @@ abstract class Statement extends SyntaxUnit {
  * An <empty statm>.
  */
 class EmptyStatm extends Statement {
-    //-- Must be changed in part 1+2:
+    //-- Must be changed in part 2:
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -646,8 +759,9 @@ class EmptyStatm extends Statement {
     }
 
     static EmptyStatm parse() {
-        //-- Must be changed in part 1:
-        return null;
+        EmptyStatm emptyStatm = new EmptyStatm();
+        Scanner.skip(semicolonToken);
+        return emptyStatm;
     }
 
     @Override void printTree() {
@@ -661,6 +775,8 @@ class EmptyStatm extends Statement {
  */
 //-- Must be changed in part 1+2:
 class ForStatm extends Statement {
+    ForControl forControl;
+    StatmList statmList;
 
     @Override
     void check(DeclList curDecls) {
@@ -676,6 +792,32 @@ class ForStatm extends Statement {
     void printTree() {
         //To change body of implemented methods use File | Settings | File Templates.
     }
+
+    static ForStatm parse(){
+        Log.enterParser("<for-statm>");
+
+        ForStatm forStatm = new ForStatm();
+        Scanner.skip(forToken);
+        Scanner.skip(leftParToken);
+        forStatm.forControl = ForControl.parse();
+        Scanner.skip(rightParToken);
+        Scanner.skip(leftCurlToken);
+        StatmList statmList = StatmList.parse();
+        Scanner.skip(rightCurlToken);
+        Log.enterParser("</for-statm>");
+
+    }
+}
+
+
+class ForControl {
+    static ForControl parse(){
+        ForControl forControl = new ForControl();
+
+
+
+        return forControl;
+    }
 }
 
 /*
@@ -684,6 +826,8 @@ class ForStatm extends Statement {
 class IfStatm extends Statement {
     Expression test;
     StatmList body;
+    ElsePart elsePart;
+
     //-- Must be changed in part 1+2:
 
     @Override void check(DeclList curDecls) {
@@ -707,7 +851,9 @@ class IfStatm extends Statement {
         ifStm.body = StatmList.parse();
         Scanner.skip(rightCurlToken);
 
-        // TODO Else statement?
+        if(Scanner.curToken == elseToken){
+            ifStm.elsePart = ElsePart.parse();
+        }
 
         Log.leaveParser("</if-statm>");
         return ifStm;
@@ -718,12 +864,65 @@ class IfStatm extends Statement {
     }
 }
 
+class ElsePart extends Statement {
+    StatmList statmList;
+
+    static ElsePart parse(){
+        ElsePart elsePart = new ElsePart();
+        Scanner.skip(elseToken);
+        Scanner.skip(leftCurlToken);
+        StatmList statmList = StatmList.parse();
+        Scanner.skip(rightCurlToken);
+        return elsePart;
+    }
+
+    @Override
+    void check(DeclList curDecls) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+}
+
 
 /*
  * A <return-statm>.
  */
-//-- Must be changed in part 1+2:
+//-- Must be changed in part 2:
+class ReturnStatm extends  Statement {
+    Expression expression;
 
+    @Override
+    void check(DeclList curDecls) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static ReturnStatm parse(){
+        ReturnStatm returnStatement = new ReturnStatm();
+        Scanner.skip(returnToken);
+        returnStatement.expression = Expression.parse();
+        Scanner.skip(semicolonToken);
+        return returnStatement;
+    }
+}
 
 /*
  * A <while-statm>.
@@ -794,12 +993,21 @@ class ExprList extends SyntaxUnit {
     }
 
     static ExprList parse() {
-        Expression lastExpr = null;
-
         Log.enterParser("<expr list>");
 
-        //-- Must be changed in part 1:
-        return null;
+        Expression lastExpr = null;
+        ExprList exprList = new ExprList();
+        exprList.firstExpr = Expression.parse();
+        lastExpr = exprList.firstExpr;
+
+        while(Scanner.curToken == commaToken){
+            Expression expression = Expression.parse();
+            lastExpr.nextExpr = expression;     // assign pointer
+            lastExpr = expression;              // set new last expression
+        }
+
+        Log.enterParser("</expr list>");
+        return exprList;
     }
 
     @Override void printTree() {
@@ -835,7 +1043,6 @@ class Expression extends Operand {
             e.relOp = RelOperator.parse();
             e.secondTerm = Term.parse();
         }
-
         Log.leaveParser("</expression>");
         return e;
     }
@@ -845,12 +1052,69 @@ class Expression extends Operand {
     }
 }
 
+class Factor extends Operator {
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static Factor parse(){
+        Log.leaveParser("<factor>");
+
+        Factor factor = new Factor();
+
+        Operand startOperator = Operand.parse();    // goes to next
+        Operand iter = null;
+
+        while(Token.isFactorOperator(Scanner.curToken)){
+            FactorOperator
+
+            startOperator.nextOperand = oper;
+        }
+        Log.leaveParser("</factor>");
+        return factor;
+    }
+};
+
+class FactorOperator extends  Operator {
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static FactorOperator parse(){
+        Log.enterParser("<factor>");
+
+        FactorOperator factorOperator = new FactorOperator();
+        factorOperator.operand = Operand.parse();
+        Log.enterParser("</factor>");
+
+        return factorOperator;
+    }
+}
+
 
 /*
  * A <term>
  */
 class Term extends SyntaxUnit {
     //-- Must be changed in part 1+2:
+    Factor factor;
+    Factor firstFactor = null;
+    Operator operator;
+
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -862,7 +1126,17 @@ class Term extends SyntaxUnit {
 
     static Term parse() {
         //-- Must be changed in part 1:
-        return null;
+        Term term = new Term();
+        term.factor = Factor.parse();
+
+        if(Token.isTermOperator(Scanner.curToken)){
+            term.operator = new AddOperator();
+            term.operator.opToken = Scanner.curToken;
+        }
+        else if(Token.isFactorOperator(Scanner.curToken)){
+
+        }
+        return term;
     }
 
     @Override void printTree() {
@@ -883,6 +1157,18 @@ abstract class Operator extends SyntaxUnit {
     @Override void check(DeclList curDecls) {}
 }
 
+class AddOperator extends Operator {
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+}
 
 //-- Must be changed in part 1+2:
 
@@ -982,7 +1268,9 @@ abstract class Operand extends SyntaxUnit {
  * A <function call>.
  */
 class FunctionCall extends Operand {
-    //-- Must be changed in part 1+2:
+    //-- Must be changed in part 2:
+    String name;
+    ExprList exprList;
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -993,8 +1281,15 @@ class FunctionCall extends Operand {
     }
 
     static FunctionCall parse() {
-        //-- Must be changed in part 1:
-        return null;
+        Log.enterParser("<function call>");
+        FunctionCall funcCall = new FunctionCall();
+        funcCall.name = Scanner.curName;
+        Scanner.skip(nameToken);
+        Scanner.skip(leftParToken);
+        funcCall.exprList = ExprList.parse();
+        Scanner.skip(rightParToken);
+        Log.enterParser("</function call>");
+        return funcCall;
     }
 
     @Override void printTree() {
@@ -1019,8 +1314,12 @@ class Number extends Operand {
     }
 
     static Number parse() {
-        //-- Must be changed in part 1:
-        return null;
+        Number num = new Number();
+        num.numVal = Scanner.curNum;
+        num.valType = Types.getType(numberToken);
+        Scanner.skip(numberToken);
+
+        return num;
     }
 
     @Override void printTree() {
@@ -1058,15 +1357,99 @@ class Variable extends Operand {
 
     static Variable parse() {
         Log.enterParser("<variable>");
-        //-- Must be changed in part 1:
 
+        Variable var = new Variable();
+        var.varName = Scanner.curName;
+        Scanner.skip(nameToken);
+
+        if(Scanner.curToken == leftBracketToken){
+            Scanner.skip(leftBracketToken);
+            var.index = Expression.parse();
+            Scanner.skip(rightBracketToken);
+        }
 
         Log.enterParser("</variable>");
 
-        return null;
+        return var;
     }
 
     @Override void printTree() {
         //-- Must be changed in part 1:
+    }
+}
+
+class AssignStatm extends Statement {
+    Assignment assignment;
+    @Override
+    void check(DeclList curDecls) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static AssignStatm parse(){
+        Log.enterParser("<assign-statm>");
+
+        AssignStatm assignStatm = new AssignStatm();
+        assignStatm.assignment = Assignment.parse();
+        Scanner.skip(semicolonToken);
+        Log.enterParser("</assign-statm>");
+
+        return assignStatm;
+    }
+}
+
+class Assignment extends Variable {
+    Variable variable;
+    Expression expression;
+
+    static Assignment parse(){
+        Log.enterParser("<assignment>");
+
+        Assignment assignment = new Assignment();
+        assignment.variable = Variable.parse();
+        Scanner.skip(equalToken);
+        assignment.expression = Expression.parse();
+
+        Log.enterParser("</assignment>");
+        return assignment;
+    }
+}
+
+class CallStatm extends Statement {
+    FunctionCall functCall = new FunctionCall();
+
+    @Override
+    void check(DeclList curDecls) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    void printTree() {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    static CallStatm parse(){
+        Log.enterParser("<call-statm>");
+
+        CallStatm callStatm = new CallStatm();
+        callStatm.functCall = FunctionCall.parse();
+        Scanner.skip(semicolonToken);
+        Log.enterParser("</call-statm>");
+
+        return callStatm;
     }
 }
