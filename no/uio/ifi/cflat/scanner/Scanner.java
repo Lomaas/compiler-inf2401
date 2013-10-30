@@ -53,6 +53,8 @@ public class Scanner {
                 switch(CharGenerator.curC){
                     case ' ' :
                         break;
+                    case '\t':
+                        break;
                     case '(':
                         nextNextToken = Token.leftParToken;
                         break;
@@ -64,6 +66,7 @@ public class Scanner {
                         break;
                     case '}':
                         nextNextToken = Token.rightCurlToken;
+                        System.out.println("right curl token");
                         break;
                     case ';':
                         nextNextToken = Token.semicolonToken;

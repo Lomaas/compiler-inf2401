@@ -115,6 +115,7 @@ class Program extends SyntaxUnit {
 
 abstract class DeclList extends SyntaxUnit {
     Declaration firstDecl = null;
+    Declaration lastDecl = null;
     DeclList outerScope;
 
     DeclList () {
@@ -131,15 +132,23 @@ abstract class DeclList extends SyntaxUnit {
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Declaration iter = firstDecl;
+
+        while(iter != null){
+            iter.printTree();
+            iter = iter.nextDecl;
+        }
     }
 
     void addDecl(Declaration d) {
-        //-- Must be changed in part 1:
-//        if(firstDecl == null){
-//            firstDecl = d;
-//        }
-//        outerScope.addDecl(d);  // added
+        if(firstDecl == null){
+            firstDecl = d;
+            lastDecl = d;
+        }
+        else {
+            lastDecl.nextDecl = d;
+            lastDecl = d;
+        }
     }
 
     int dataSize() {
@@ -166,7 +175,6 @@ class GlobalDeclList extends DeclList {
 
     static GlobalDeclList parse() {
         GlobalDeclList gdl = new GlobalDeclList();
-        System.out.println("globaldeclist");
         Scanner.readNext();
         Scanner.readNext();
         Scanner.readNext();
@@ -182,8 +190,8 @@ class GlobalDeclList extends DeclList {
                     System.out.println("<End> Function declaration");
                 } else if (Scanner.nextNextToken == leftBracketToken) {
                     System.out.println("Global array Decl");
-
                     gdl.addDecl(GlobalArrayDecl.parse());
+                    System.out.println("End Global array Decl");
                 } else {
                     System.out.println("<Start> Global var decl");
                     gdl.addDecl(GlobalSimpleVarDecl.parse());
@@ -247,8 +255,6 @@ class ParamDeclList extends DeclList {
     }
 
     static ParamDeclList parse() {
-
-        //-- Must be changed in part 1:
         ParamDeclList paramDeclList = new ParamDeclList();
 
         while(Scanner.curToken != rightParToken){
@@ -262,6 +268,20 @@ class ParamDeclList extends DeclList {
         }
 
         return paramDeclList;
+    }
+
+    @Override void printTree(){
+        Declaration iter = firstDecl;
+        boolean printComma = false;
+
+        while(iter != null){
+            if(printComma == true){
+                Log.wTree(", ");
+            }
+            Log.wTree(iter.type.typeName() + " " + iter.name);
+            iter = iter.nextDecl;
+            printComma = true;
+        }
     }
 }
 
@@ -357,6 +377,8 @@ abstract class VarDecl extends Declaration {
  * A global array declaration
  */
 class GlobalArrayDecl extends VarDecl {
+    Number number = null;
+
     GlobalArrayDecl(String n) {
         super(n);
         assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + n;
@@ -388,16 +410,20 @@ class GlobalArrayDecl extends VarDecl {
         Scanner.readNext(); // Skip type
         Scanner.skip(nameToken);
         Scanner.skip(leftBracketToken);
-        Number.parse();
+        globVarDec.number = Number.parse();
         Scanner.skip(rightBracketToken);
         Scanner.skip(semicolonToken);
-        Log.enterParser("</var decl>");
+        Log.leaveParser("</var decl>");
 
         return globVarDec;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTree(type.typeName() + " " + name);
+        Log.wTree("[");
+        number.printTree();
+        Log.wTree("]");
+        Log.wTreeLn(";");
     }
 }
 
@@ -436,7 +462,7 @@ class GlobalSimpleVarDecl extends VarDecl {
         Scanner.skip(Token.nameToken);  // next should be name token
         Scanner.skip(semicolonToken);
 
-        Log.enterParser("</var decl>");
+        Log.leaveParser("</var decl>");
         return globVarDec;
     }
 }
@@ -446,6 +472,8 @@ class GlobalSimpleVarDecl extends VarDecl {
  * A local array declaration
  */
 class LocalArrayDecl extends VarDecl {
+    Number number;
+
     LocalArrayDecl(String n) {
         super(n);
     }
@@ -474,16 +502,21 @@ class LocalArrayDecl extends VarDecl {
         Scanner.readNext(); // Skip type
         Scanner.skip(nameToken);
         Scanner.skip(leftBracketToken);
-        Number.parse();
+        //TODO chekc if this is correct
+        localArrayDecl.number = Number.parse();
         Scanner.skip(rightBracketToken);
         Scanner.skip(semicolonToken);
 
-        Log.enterParser("</var decl>");
-        return null;
+        Log.leaveParser("</var decl>");
+        return localArrayDecl;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTree(type.typeName() + " " + name);
+        Log.wTree("[");
+        number.printTree();
+        Log.wTree("]");
+        Log.wTreeLn(";");
     }
 
 }
@@ -522,7 +555,7 @@ class LocalSimpleVarDecl extends VarDecl {
         Scanner.skip(Token.nameToken);      // next should be name token
         Scanner.skip(semicolonToken);
 
-        Log.enterParser("</var decl>");
+        Log.leaveParser("</var decl>");
         return lvd;
     }
 }
@@ -560,7 +593,7 @@ class ParamDecl extends VarDecl {
         parDec.type = Types.getType(Scanner.curToken);
         Scanner.readNext(); // skip type
         Scanner.skip(nameToken);
-        Log.enterParser("</param decl>");
+        Log.leaveParser("</param decl>");
         return parDec;
     }
 }
@@ -618,13 +651,18 @@ class FuncDecl extends Declaration {
         Scanner.skip(rightParToken);
         funcDecl.body = FuncBody.parse();
 
-        Log.enterParser("</func decl>");
+        Log.leaveParser("</func decl>");
 
         return funcDecl;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTree(type.typeName() + " ");
+        Log.wTree(name + " (");
+        paramDeclList.printTree();
+        Log.wTree(")");
+        body.printTree();
+
     }
 }
 
@@ -633,7 +671,7 @@ class FuncDecl extends Declaration {
 
 class FuncBody extends Statement {
     StatmList body;
-    LocalDeclList localDeclList;
+    LocalDeclList localDeclList = null;
 
     @Override
     void check(DeclList curDecls) {
@@ -647,7 +685,15 @@ class FuncBody extends Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        Log.wTreeLn("{");
+        Log.indentTree();
+
+        if(localDeclList != null)
+           localDeclList.printTree();
+
+        body.printTree();
+        Log.outdentTree();
+        Log.wTreeLn("}");
     }
 
     static FuncBody parse(){
@@ -655,10 +701,13 @@ class FuncBody extends Statement {
 
         FuncBody fb = new FuncBody();
         Scanner.skip(leftCurlToken);
-        fb.localDeclList = LocalDeclList.parse();
+
+        if(Token.isTypeName(Scanner.curToken))
+            fb.localDeclList = LocalDeclList.parse();
+
         fb.body = StatmList.parse();
         Scanner.skip(rightCurlToken);
-        Log.enterParser("</func body>");
+        Log.leaveParser("</func body>");
 
         return fb;
     }
@@ -668,8 +717,6 @@ class FuncBody extends Statement {
  * A <statm list>.
  */
 class StatmList extends SyntaxUnit {
-    //-- Must be changed in part 1:
-    LocalSimpleVarDecl varDecl;
     Statement firstStatement = null;
 
     @Override void check(DeclList curDecls) {
@@ -703,7 +750,11 @@ class StatmList extends SyntaxUnit {
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Statement iter = firstStatement;
+        while(iter != null){
+            iter.printTree();
+            iter = iter.nextStatm;
+        }
     }
 }
 
@@ -765,7 +816,7 @@ class EmptyStatm extends Statement {
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTreeLn(";");
     }
 }
 	
@@ -790,7 +841,14 @@ class ForStatm extends Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        Log.wTreeLn();
+        Log.wTree("for(");
+        forControl.printTree();
+        Log.wTreeLn("){");
+        Log.indentTree();
+        statmList.printTree();
+        Log.outdentTree();
+        Log.wTreeLn("}");
     }
 
     static ForStatm parse(){
@@ -802,21 +860,46 @@ class ForStatm extends Statement {
         forStatm.forControl = ForControl.parse();
         Scanner.skip(rightParToken);
         Scanner.skip(leftCurlToken);
-        StatmList statmList = StatmList.parse();
+        forStatm.statmList = StatmList.parse();
         Scanner.skip(rightCurlToken);
-        Log.enterParser("</for-statm>");
+        Log.leaveParser("</for-statm>");
 
+        return forStatm;
     }
 }
 
 
 class ForControl {
+    Assignment firstAssignment = null;
+    Assignment secondAssignment = null;
+    Expression expression;
+
     static ForControl parse(){
         ForControl forControl = new ForControl();
 
+        if(Scanner.nextToken == assignToken)
+            forControl.firstAssignment = Assignment.parse();
 
+        Scanner.skip(semicolonToken);
+        forControl.expression = Expression.parse();
+        Scanner.skip(semicolonToken);
+
+        if(Scanner.nextToken == assignToken)
+            forControl.secondAssignment = Assignment.parse();
 
         return forControl;
+    }
+
+    void printTree(){
+        if(firstAssignment != null)
+            firstAssignment.printTree();
+        System.out.println("lalala");
+        Log.wTree(";");
+        expression.printTree();
+        Log.wTree(";");
+
+        if(secondAssignment != null)
+            secondAssignment.printTree();
     }
 }
 
@@ -826,7 +909,7 @@ class ForControl {
 class IfStatm extends Statement {
     Expression test;
     StatmList body;
-    ElsePart elsePart;
+    ElsePart elsePart = null;
 
     //-- Must be changed in part 1+2:
 
@@ -860,18 +943,26 @@ class IfStatm extends Statement {
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTree("if (");  test.printTree();  Log.wTreeLn(") {");
+        Log.indentTree();
+        body.printTree();
+        Log.outdentTree();
+        Log.wTreeLn("}");
+
+        if(elsePart != null){
+            elsePart.printTree();
+        }
     }
 }
 
 class ElsePart extends Statement {
-    StatmList statmList;
+    StatmList body;
 
     static ElsePart parse(){
         ElsePart elsePart = new ElsePart();
         Scanner.skip(elseToken);
         Scanner.skip(leftCurlToken);
-        StatmList statmList = StatmList.parse();
+        elsePart.body = StatmList.parse();
         Scanner.skip(rightCurlToken);
         return elsePart;
     }
@@ -888,10 +979,13 @@ class ElsePart extends Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        Log.wTreeLn("else {");
+        Log.indentTree();
+        body.printTree();
+        Log.outdentTree();
+        Log.wTreeLn("}");
     }
 }
-
 
 /*
  * A <return-statm>.
@@ -912,7 +1006,9 @@ class ReturnStatm extends  Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        Log.wTree("return ");
+        expression.printTree();
+        Log.wTreeLn(";");
     }
 
     static ReturnStatm parse(){
@@ -997,21 +1093,34 @@ class ExprList extends SyntaxUnit {
 
         Expression lastExpr = null;
         ExprList exprList = new ExprList();
-        exprList.firstExpr = Expression.parse();
-        lastExpr = exprList.firstExpr;
 
-        while(Scanner.curToken == commaToken){
-            Expression expression = Expression.parse();
-            lastExpr.nextExpr = expression;     // assign pointer
-            lastExpr = expression;              // set new last expression
+        if(Scanner.curToken != rightParToken){
+            exprList.firstExpr = Expression.parse();
+            lastExpr = exprList.firstExpr;
+
+            while(Scanner.curToken == commaToken){
+                Scanner.skip(commaToken);
+                Expression expression = Expression.parse();
+                lastExpr.nextExpr = expression;     // assign pointer
+                lastExpr = expression;              // set new last expression
+            }
         }
-
-        Log.enterParser("</expr list>");
+        Log.leaveParser("</expr list>");
         return exprList;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Expression iter = firstExpr;
+        boolean addComma = false;
+
+        while(iter != null){
+            if(addComma)
+                Log.wTree(",");
+
+            iter.printTree();
+            iter = iter.nextExpr;
+            addComma = true;
+        }
     }
     //-- Must be changed in part 1:
 }
@@ -1039,23 +1148,90 @@ class Expression extends Operand {
 
         Expression e = new Expression();
         e.firstTerm = Term.parse();
+
         if (Token.isRelOperator(Scanner.curToken)) {
             e.relOp = RelOperator.parse();
             e.secondTerm = Term.parse();
         }
         Log.leaveParser("</expression>");
+
         return e;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        if(innerExpr)
+            Log.wTree("(");
+
+        firstTerm.printTree();
+
+        if(relOp != null && secondTerm != null){
+            relOp.printTree();
+            secondTerm.printTree();
+        }
+        if(innerExpr)
+            Log.wTree(")");
+
     }
 }
 
 class Factor extends Operator {
     Operand startOperand = null;
+    FactorOperator firstFactorOper = null;
     Factor nextFactor = null;
 
+    @Override
+    void genCode(FuncDecl curFunc) {
+
+    }
+
+    static Factor parse(){
+        Log.enterParser("<factor>");
+
+        Factor factor = new Factor();
+        factor.startOperand = Operand.parse();    // goes to next
+
+        Operand lastOperand = factor.startOperand;
+        FactorOperator lastFactorOperator = null;
+
+        while(Token.isFactorOperator(Scanner.curToken)){
+            FactorOperator tmpFactor = FactorOperator.parse();
+
+            if(factor.firstFactorOper == null){
+                factor.firstFactorOper = tmpFactor;
+            }
+
+            Operand tmpOperand = Operand.parse();
+
+            lastOperand.nextOperand = tmpOperand;     // sett pointer to next
+            lastOperand = tmpOperand;
+
+            if(lastFactorOperator != null){
+                lastFactorOperator.nextOp = tmpFactor;
+            }
+
+            lastFactorOperator = tmpFactor;
+        }
+        Log.leaveParser("</factor>");
+        return factor;
+    }
+
+    @Override
+    void printTree() {
+        startOperand.printTree();
+
+        Operand operandIter = startOperand;
+        FactorOperator factorOperIter = firstFactorOper;
+
+        while(factorOperIter != null){
+            factorOperIter.printTree();
+            operandIter = operandIter.nextOperand;
+            operandIter.printTree();
+            factorOperIter = (FactorOperator) factorOperIter.nextOp;
+        }
+    }
+};
+
+class FactorOperator extends  Operator {
     @Override
     void genCode(FuncDecl curFunc) {
         //To change body of implemented methods use File | Settings | File Templates.
@@ -1063,60 +1239,30 @@ class Factor extends Operator {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        if(opToken == multiplyToken)
+            Log.wTree(" * ");
+        else
+            Log.wTree(" / ");
     }
 
-    static Factor parse(){
-        Log.leaveParser("<factor>");
-        Operand lastOperand = null;
-        Factor factor = new Factor();
+    static FactorOperator parse(){
+        FactorOperator factorOperator = new FactorOperator();
 
-        Operand startOperand = Operand.parse();    // goes to next
-        Operand iter = null;
-        lastOperand = startOperand;
+        factorOperator.opToken = Scanner.curToken;
+        Scanner.readNext();     // skip it
 
-        while(Token.isFactorOperator(Scanner.curToken)){
-            Scanner.readNext();         // skip factor operator
-            iter = Operand.parse();
-            lastOperand.nextOperand = iter;     // sett pointer to next
-        }
-        Log.leaveParser("</factor>");
-        return factor;
+        return factorOperator;
     }
-};
-
-//class FactorOperator extends  Operator {
-//
-//    @Override
-//    void genCode(FuncDecl curFunc) {
-//        //To change body of implemented methods use File | Settings | File Templates.
-//    }
-//
-//    @Override
-//    void printTree() {
-//        //To change body of implemented methods use File | Settings | File Templates.
-//    }
-//
-//    static FactorOperator parse(){
-//        Log.enterParser("<factor operator>");
-//
-//        FactorOperator factorOperator = new FactorOperator();
-//        factorOperator.operand = Operand.parse();
-//        Log.enterParser("</factor>");
-//
-//        return factorOperator;
-//    }
-//}
+}
 
 
 /*
  * A <term>
  */
 class Term extends SyntaxUnit {
-    //-- Must be changed in part 1+2:
-    Factor factor;
+    //-- Must be changed in part 2:
     Factor firstFactor = null;
-    Operator operator;
+    Operator firstOperator = null;
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -1127,26 +1273,46 @@ class Term extends SyntaxUnit {
     }
 
     static Term parse() {
-        //-- Must be changed in part 1:
+        Log.enterParser("<term>");
         Term term = new Term();
-        term.factor = Factor.parse();
-        term.firstFactor = term.factor;
+        term.firstFactor = Factor.parse();
 
-        Factor iter = null;
         Factor lastFactor = term.firstFactor;
+        Operator lastOperator = null;
 
         while(Token.isTermOperator(Scanner.curToken)){
-            TermOperator termOperator = TermOperator.parse();
-            iter = Factor.parse();
+            System.out.println("Is term operato r" + Scanner.nextName);
 
-            lastFactor.nextFactor = iter;
-            lastFactor = iter;
+            TermOperator termOper = TermOperator.parse();
+
+            Factor factor = Factor.parse();
+            lastFactor.nextFactor = factor;
+            lastFactor = factor;
+
+            if(term.firstOperator == null)
+                term.firstOperator = termOper;
+
+            if(lastOperator != null){
+                lastOperator.nextOp = termOper;
+            }
+            lastOperator = termOper;
         }
+        Log.leaveParser("</term");
         return term;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1+2:
+        Factor iterFactor = firstFactor;
+        Operator iterOperator = firstOperator;
+
+        iterFactor.printTree();
+
+        while(iterOperator != null){
+            iterFactor = iterFactor.nextFactor;
+            iterOperator.printTree();
+            iterFactor.printTree();
+            iterOperator = iterOperator.nextOp;
+        }
     }
 }
 
@@ -1164,25 +1330,31 @@ abstract class Operator extends SyntaxUnit {
 }
 
 class TermOperator extends Operator {
-
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        System.out.println("------" + opToken + "--------!");
+        if(opToken == addToken)
+            Log.wTree(" + ");
+        else
+            Log.wTree(" - ");
     }
 
     static TermOperator parse(){
         Log.enterParser("<term operator>");
 
         TermOperator termOperator = new TermOperator();
-        termOperator.opToken = Scanner.curToken;
+        System.out.println("--------" + Scanner.curToken + "---------");
+        if(Token.isTermOperator(Scanner.curToken))
+            termOperator.opToken = Scanner.curToken;
         Scanner.readNext();
 
-        Log.enterParser("</term operator>");
+        Log.leaveParser("</term operator>");
+        return termOperator;
     }
 }
 
@@ -1298,18 +1470,23 @@ class FunctionCall extends Operand {
 
     static FunctionCall parse() {
         Log.enterParser("<function call>");
+
         FunctionCall funcCall = new FunctionCall();
         funcCall.name = Scanner.curName;
         Scanner.skip(nameToken);
         Scanner.skip(leftParToken);
         funcCall.exprList = ExprList.parse();
         Scanner.skip(rightParToken);
-        Log.enterParser("</function call>");
+
+        Log.leaveParser("</function call>");
         return funcCall;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        System.out.println("Print function call " + name);
+        Log.wTree(name + "(");
+        exprList.printTree();
+        Log.wTree(")");
     }
     //-- Must be changed in part 1+2:
 }
@@ -1330,16 +1507,20 @@ class Number extends Operand {
     }
 
     static Number parse() {
+        Log.enterParser("<number>");
+
         Number num = new Number();
         num.numVal = Scanner.curNum;
-        num.valType = Types.getType(numberToken);
+        //num.valType = Types.getType(numberToken);
         Scanner.skip(numberToken);
 
+        Log.leaveParser("</number>");
         return num;
     }
 
     @Override void printTree() {
         Log.wTree("" + numVal);
+
     }
 }
 
@@ -1381,21 +1562,32 @@ class Variable extends Operand {
         if(Scanner.curToken == leftBracketToken){
             Scanner.skip(leftBracketToken);
             var.index = Expression.parse();
+
             Scanner.skip(rightBracketToken);
         }
 
-        Log.enterParser("</variable>");
+        Log.leaveParser("</variable>");
 
         return var;
     }
 
     @Override void printTree() {
-        //-- Must be changed in part 1:
+        Log.wTree(varName);
+        System.out.println("print tree");
+
+        if(index != null){
+            System.out.println("LEFTBRACKETTOKEN");
+            Log.wTreeLn("[");
+            index.printTree();
+            Log.wTree("]");
+            System.out.println("LEFTBRACKETTOKEN");
+
+        }
     }
 }
 
 class AssignStatm extends Statement {
-    Assignment assignment;
+    Assignment assignment = null;
     @Override
     void check(DeclList curDecls) {
         //To change body of implemented methods use File | Settings | File Templates.
@@ -1408,7 +1600,8 @@ class AssignStatm extends Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        assignment.printTree();
+        Log.wTreeLn(";");
     }
 
     static AssignStatm parse(){
@@ -1417,13 +1610,14 @@ class AssignStatm extends Statement {
         AssignStatm assignStatm = new AssignStatm();
         assignStatm.assignment = Assignment.parse();
         Scanner.skip(semicolonToken);
-        Log.enterParser("</assign-statm>");
+
+        Log.leaveParser("</assign-statm>");
 
         return assignStatm;
     }
 }
 
-class Assignment extends Variable {
+class Assignment extends Statement {
     Variable variable;
     Expression expression;
 
@@ -1432,16 +1626,12 @@ class Assignment extends Variable {
 
         Assignment assignment = new Assignment();
         assignment.variable = Variable.parse();
-        Scanner.skip(equalToken);
+        Scanner.skip(assignToken);
         assignment.expression = Expression.parse();
 
-        Log.enterParser("</assignment>");
+        Log.leaveParser("</assignment>");
         return assignment;
     }
-}
-
-class CallStatm extends Statement {
-    FunctionCall functCall = new FunctionCall();
 
     @Override
     void check(DeclList curDecls) {
@@ -1455,7 +1645,29 @@ class CallStatm extends Statement {
 
     @Override
     void printTree() {
-        //To change body of implemented methods use File | Settings | File Templates.
+        Log.wTree(variable.varName);
+        Log.wTree(" = ");
+        expression.printTree();
+    }
+}
+
+class CallStatm extends Statement {
+    FunctionCall functCall = null;
+
+    @Override
+    void check(DeclList curDecls) {
+
+    }
+
+    @Override
+    void genCode(FuncDecl curFunc) {
+
+    }
+
+    @Override
+    void printTree() {
+        functCall.printTree();
+        Log.wTreeLn(";");
     }
 
     static CallStatm parse(){
@@ -1464,7 +1676,7 @@ class CallStatm extends Statement {
         CallStatm callStatm = new CallStatm();
         callStatm.functCall = FunctionCall.parse();
         Scanner.skip(semicolonToken);
-        Log.enterParser("</call-statm>");
+        Log.leaveParser("</call-statm>");
 
         return callStatm;
     }

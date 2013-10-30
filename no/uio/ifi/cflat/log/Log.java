@@ -15,7 +15,7 @@ import static no.uio.ifi.cflat.scanner.Token.*;
  */
 public class Log {
     public static boolean doLogBinding = false, doLogParser = false,
-            doLogScanner = false, doLogTree = false;
+            doLogScanner = false, doLogTree = true;
 
     private static String logName, curTreeLine = "";
     private static int nLogLines = 0, parseLevel = 0, treeLevel = 0;
@@ -52,16 +52,26 @@ public class Log {
 
     public static void enterParser(String symbol) {
         if (! doLogParser) return;
+        String tmp = "Parser: ";
 
-        // TODO -- Must be changed in part 1:
-        writeLogLine("Parser: " +symbol);
+        for (int i = 1;  i <= parseLevel;  ++i)
+            tmp += "  ";
+
+        parseLevel++;
+
+        writeLogLine(tmp + symbol);
     }
 
     public static void leaveParser(String symbol) {
         if (! doLogParser) return;
+        String tmp = "Parser: ";
 
-        // TODO -- Must be changed in part 1:
-        writeLogLine("Parser: " + symbol);
+        if(parseLevel != 0){
+            parseLevel--;
+            for (int i = 1;  i <= parseLevel;  ++i)
+                tmp += "  ";
+        }
+        writeLogLine(tmp + symbol);
     }
 
     /**
@@ -103,6 +113,7 @@ public class Log {
             for (int i = 1;  i <= treeLevel;  ++i) curTreeLine += "  ";
         }
         curTreeLine += s;
+
     }
 
     public static void wTreeLn() {
@@ -115,11 +126,14 @@ public class Log {
     }
 
     public static void indentTree() {
-        //-- Must be changed in part 1:
-
+        curTreeLine = "";
+        treeLevel++;
+        for (int i = 1;  i <= treeLevel;  ++i) curTreeLine += "  ";
     }
 
     public static void outdentTree() {
-        //-- Must be changed in part 1:
+        curTreeLine = "";
+        treeLevel--;
+        for (int i = 1;  i <= treeLevel;  ++i) curTreeLine += "  ";
     }
 }
