@@ -89,9 +89,8 @@ public class Cflat {
                 } else {
                     System.out.print("Parsing...");  Syntax.parseProgram();
                     System.out.print(Log.doLogTree);
-                    if (Log.doLogTree) {
-                        System.out.print(" printing...");  Syntax.printProgram();
-                    }
+                    System.out.print(" printing...");  Syntax.printProgram();
+
                     if (! testParser) {
                         System.out.print(" checking...");  Syntax.checkProgram();
                         System.out.print(" generating code...");  Syntax.genCode();

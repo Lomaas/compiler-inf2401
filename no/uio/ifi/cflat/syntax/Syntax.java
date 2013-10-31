@@ -84,6 +84,7 @@ class Program extends SyntaxUnit {
             // Check that 'main' has been declared properly:
             //-- Must be changed in part 2:
         }
+
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -180,29 +181,18 @@ class GlobalDeclList extends DeclList {
         Scanner.readNext();
 
         while (Token.isTypeName(Scanner.curToken)) {
-            System.out.println("Out in main loop");
             if (Scanner.nextToken == nameToken) {
-                System.out.println("NameToken " + Scanner.nextName);
-
                 if (Scanner.nextNextToken == leftParToken) {
-                    System.out.println("<Start> Function declaration");
                     gdl.addDecl(FuncDecl.parse());
-                    System.out.println("<End> Function declaration");
                 } else if (Scanner.nextNextToken == leftBracketToken) {
-                    System.out.println("Global array Decl");
                     gdl.addDecl(GlobalArrayDecl.parse());
-                    System.out.println("End Global array Decl");
                 } else {
-                    System.out.println("<Start> Global var decl");
                     gdl.addDecl(GlobalSimpleVarDecl.parse());
-                    System.out.println("<End> Global var decl");
                 }
             } else {
                 Error.expected("A declaration");
             }
         }
-        System.out.println("end of GlobalDecList parse");
-        System.out.println(Scanner.curToken);
         return gdl;
     }
 }
@@ -218,28 +208,20 @@ class LocalDeclList extends DeclList {
     }
 
     static LocalDeclList parse() {
-        System.out.println("Inside parse local dec list");
-        System.out.println(Scanner.curToken);
         LocalDeclList ldl = new LocalDeclList();
 
         while (Token.isTypeName(Scanner.curToken)) {
             if (Scanner.nextToken == nameToken) {
-                System.out.println("NameToken " + Scanner.nextName);
 
                 if (Scanner.nextNextToken == leftBracketToken) {
-                    System.out.println("Local array Decl");
                     ldl.addDecl(LocalArrayDecl.parse());
                 } else {
-                    System.out.println("<Start> Local var decl");
                     ldl.addDecl(LocalSimpleVarDecl.parse());
-                    System.out.println("<End> Local var decl");
                 }
             } else {
                 Error.expected("A declaration");
             }
         }
-        System.out.println("end of localDecList parse");
-
         return ldl;
     }
 }
@@ -733,7 +715,7 @@ class StatmList extends SyntaxUnit {
         StatmList sl = new StatmList();
         Statement lastStatm = null;
 
-        while (Scanner.curToken != rightCurlToken) {
+        while (Scanner.curToken != rightCurlToken){
             Statement statement = Statement.parse();
 
             if(sl.firstStatement == null)
@@ -893,7 +875,6 @@ class ForControl {
     void printTree(){
         if(firstAssignment != null)
             firstAssignment.printTree();
-        System.out.println("lalala");
         Log.wTree(";");
         expression.printTree();
         Log.wTree(";");
@@ -1281,8 +1262,6 @@ class Term extends SyntaxUnit {
         Operator lastOperator = null;
 
         while(Token.isTermOperator(Scanner.curToken)){
-            System.out.println("Is term operato r" + Scanner.nextName);
-
             TermOperator termOper = TermOperator.parse();
 
             Factor factor = Factor.parse();
@@ -1297,7 +1276,7 @@ class Term extends SyntaxUnit {
             }
             lastOperator = termOper;
         }
-        Log.leaveParser("</term");
+        Log.leaveParser("</term>");
         return term;
     }
 
@@ -1337,7 +1316,6 @@ class TermOperator extends Operator {
 
     @Override
     void printTree() {
-        System.out.println("------" + opToken + "--------!");
         if(opToken == addToken)
             Log.wTree(" + ");
         else
@@ -1348,7 +1326,6 @@ class TermOperator extends Operator {
         Log.enterParser("<term operator>");
 
         TermOperator termOperator = new TermOperator();
-        System.out.println("--------" + Scanner.curToken + "---------");
         if(Token.isTermOperator(Scanner.curToken))
             termOperator.opToken = Scanner.curToken;
         Scanner.readNext();
@@ -1483,7 +1460,6 @@ class FunctionCall extends Operand {
     }
 
     @Override void printTree() {
-        System.out.println("Print function call " + name);
         Log.wTree(name + "(");
         exprList.printTree();
         Log.wTree(")");
@@ -1573,15 +1549,11 @@ class Variable extends Operand {
 
     @Override void printTree() {
         Log.wTree(varName);
-        System.out.println("print tree");
 
         if(index != null){
-            System.out.println("LEFTBRACKETTOKEN");
-            Log.wTreeLn("[");
+            Log.wTree("[");
             index.printTree();
             Log.wTree("]");
-            System.out.println("LEFTBRACKETTOKEN");
-
         }
     }
 }
@@ -1645,7 +1617,7 @@ class Assignment extends Statement {
 
     @Override
     void printTree() {
-        Log.wTree(variable.varName);
+        variable.printTree();
         Log.wTree(" = ");
         expression.printTree();
     }

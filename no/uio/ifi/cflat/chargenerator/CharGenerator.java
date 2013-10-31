@@ -14,7 +14,7 @@ import no.uio.ifi.cflat.log.Log;
  */
 public class CharGenerator {
     public static char curC, nextC;
-
+    public static boolean bug = false;
     private static LineNumberReader sourceFile = null;
     private static String sourceLine;
     private static int sourcePos;
@@ -39,8 +39,9 @@ public class CharGenerator {
     }
 
     public static boolean isMoreToRead() {
-        if(sourceLine == null)
+        if(sourceLine == null){
             return false;
+        }
         return true;
     }
 
@@ -50,9 +51,10 @@ public class CharGenerator {
 
     public static void readNext() {
         curC = nextC;
+
         if (! isMoreToRead()) return;
 
-        if(sourceLine.contains("#") || sourceLine.length() < 1) {
+        if(sourceLine.length() < 1 || sourceLine.charAt(0) == '#') {
             // Read next line
             readNextLine();
             readNext();
@@ -70,8 +72,10 @@ public class CharGenerator {
     private static void readNextLine(){
         try {
             sourceLine = sourceFile.readLine();
+
             if(sourceLine != null)
                 Log.noteSourceLine(CharGenerator.curLineNum(), sourceLine);
+
             sourcePos = 0;
         }
         catch(IOException e) {

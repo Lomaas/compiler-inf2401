@@ -66,7 +66,6 @@ public class Scanner {
                         break;
                     case '}':
                         nextNextToken = Token.rightCurlToken;
-                        System.out.println("right curl token");
                         break;
                     case ';':
                         nextNextToken = Token.semicolonToken;
@@ -122,14 +121,7 @@ public class Scanner {
                     case '[':
                         nextNextToken = Token.leftBracketToken;
                         break;
-                    case '’':
-                        CharGenerator.readNext();
-                        nextNextNum = (int)CharGenerator.curC;
-                        CharGenerator.readNext();
-                        nextNextToken = Token.numberToken;
-                        break;
                     case '\'':
-                        System.out.println("is ' char");
                         CharGenerator.readNext();
                         nextNextNum = (int)CharGenerator.curC;
                         nextNextToken = Token.numberToken;
@@ -183,7 +175,6 @@ public class Scanner {
 
     public static boolean checkIsDigit(char k){
         int c = (int) k;
-        //System.out.print(c);
 
         if(c >= 48 && c <= 57)
             return true;
@@ -200,21 +191,22 @@ public class Scanner {
         }
         nextNextNum = Integer.parseInt(word);
         nextNextToken = Token.numberToken;
+        word = "";
     }
 
     public static void skipUntilFinishCommentTag(){
         CharGenerator.readNext();
         CharGenerator.readNext();
 
-        while(CharGenerator.curC != '*' && CharGenerator.nextC != '/')
+        while(true){
+            if(CharGenerator.curC == '*' && CharGenerator.nextC == '/')
+                break;
             CharGenerator.readNext();
-
+        }
         CharGenerator.readNext();   // curC will be '/'
     }
 
     public static void evaluateWord(){
-        System.out.println(word);
-
         if(word.equals("int")){
             nextNextToken = Token.intToken;
         }
@@ -254,7 +246,6 @@ public class Scanner {
             word += CharGenerator.nextC;
             CharGenerator.readNext();
         }
-        System.out.println(word);
 
         return word;
     }
@@ -262,7 +253,6 @@ public class Scanner {
     // Checks ASCII values
     public static boolean isEndOfWord(char c){
         int cast = (int) c;
-        //System.out.println(cast);
 
         // A - Z
         if(cast >= 65 && cast <= 90)
