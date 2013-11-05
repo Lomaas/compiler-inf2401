@@ -54,18 +54,17 @@ public class CharGenerator {
 
         if (! isMoreToRead()) return;
 
-        if(sourceLine.length() < 1 || sourceLine.charAt(0) == '#') {
+        while(sourceLine.length() < 1 || sourceLine.charAt(0) == '#' || sourcePos >= sourceLine.length()) {
             // Read next line
             readNextLine();
-            readNext();
-            return;
+            if(sourceLine == null){
+                return;
+            }
         }
 
-        nextC = sourceLine.charAt(sourcePos);
-        sourcePos ++;
-
-        if(sourcePos >= sourceLine.length()){
-            readNextLine();
+        if(isMoreToRead()) {
+            nextC = sourceLine.charAt(sourcePos);
+            sourcePos ++;
         }
     }
 
