@@ -24,11 +24,11 @@ public class Syntax {
     static Program program;
 
     public static void init() {
-        //-- Must be changed in part 1:
+
     }
 
     public static void finish() {
-        //-- Must be changed in part 1:
+
     }
 
     public static void checkProgram() {
@@ -149,7 +149,22 @@ abstract class DeclList extends SyntaxUnit {
         else {
             lastDecl.nextDecl = d;
             lastDecl = d;
+            if(isDuplicate()){
+                Error.error("Duplicate name declaration");
+            }
         }
+    }
+
+    boolean isDuplicate(){
+        Declaration iter = firstDecl;
+
+        while(iter != null && iter != lastDecl){
+            if(iter.name.equals(lastDecl.name)){
+                return true;
+            }
+            iter = iter.nextDecl;
+        }
+        return false;
     }
 
     int dataSize() {
@@ -373,7 +388,7 @@ class GlobalArrayDecl extends VarDecl {
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
-	/* OK */
+	    /* OK */
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
@@ -388,11 +403,12 @@ class GlobalArrayDecl extends VarDecl {
         Log.enterParser("<var decl>");
 
         GlobalArrayDecl globVarDec = new GlobalArrayDecl(Scanner.nextName);
-        globVarDec.type = Types.getType(Scanner.curToken);
+        Type type = Types.getType(Scanner.curToken);
         Scanner.readNext(); // Skip type
         Scanner.skip(nameToken);
         Scanner.skip(leftBracketToken);
-        globVarDec.number = Number.parse();
+        globVarDec.type = new ArrayType(Scanner.curNum, type);
+        Scanner.readNext(); // Skip number
         Scanner.skip(rightBracketToken);
         Scanner.skip(semicolonToken);
         Log.leaveParser("</var decl>");
@@ -401,9 +417,10 @@ class GlobalArrayDecl extends VarDecl {
     }
 
     @Override void printTree() {
-        Log.wTree(type.typeName() + " " + name);
+        ArrayType arrayType = (ArrayType) type;
+        Log.wTree(arrayType.typeName() + " " + name);
         Log.wTree("[");
-        number.printTree();
+        Log.wTree(Integer.toString(arrayType.nElems));
         Log.wTree("]");
         Log.wTreeLn(";");
     }
@@ -424,11 +441,11 @@ class GlobalSimpleVarDecl extends VarDecl {
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        Syntax.error(use, name + " is an simple variable and no array!");
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
-	/* OK */
+	    /* OK */
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -454,8 +471,6 @@ class GlobalSimpleVarDecl extends VarDecl {
  * A local array declaration
  */
 class LocalArrayDecl extends VarDecl {
-    Number number;
-
     LocalArrayDecl(String n) {
         super(n);
     }
@@ -465,11 +480,11 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        /* OK */
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        Syntax.error(use, name + " is an array and no simple variable!");
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -480,12 +495,12 @@ class LocalArrayDecl extends VarDecl {
         Log.enterParser("<var decl>");
 
         LocalArrayDecl localArrayDecl = new LocalArrayDecl(Scanner.nextName);
-        localArrayDecl.type = Types.getType(Scanner.curToken);
+        Type type = Types.getType(Scanner.curToken);
         Scanner.readNext(); // Skip type
         Scanner.skip(nameToken);
         Scanner.skip(leftBracketToken);
-        //TODO chekc if this is correct
-        localArrayDecl.number = Number.parse();
+        localArrayDecl.type = new ArrayType(Scanner.curNum, type);
+        Scanner.readNext(); // Skip number
         Scanner.skip(rightBracketToken);
         Scanner.skip(semicolonToken);
 
@@ -494,9 +509,10 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void printTree() {
-        Log.wTree(type.typeName() + " " + name);
+        ArrayType arrayType = (ArrayType) type;
+        Log.wTree(arrayType.typeName() + " " + name);
         Log.wTree("[");
-        number.printTree();
+        Log.wTree(Integer.toString(arrayType.nElems));
         Log.wTree("]");
         Log.wTreeLn(";");
     }
@@ -517,11 +533,11 @@ class LocalSimpleVarDecl extends VarDecl {
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        Syntax.error(use, name + " is an simple variable and no array!");
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        /* OK */
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -792,8 +808,10 @@ class EmptyStatm extends Statement {
     }
 
     static EmptyStatm parse() {
+        Log.enterParser("<emtpy-stmt");
         EmptyStatm emptyStatm = new EmptyStatm();
         Scanner.skip(semicolonToken);
+        Log.leaveParser("</empty-stmt");
         return emptyStatm;
     }
 
@@ -813,7 +831,8 @@ class ForStatm extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        forControl.check(curDecls);
+        statmList.check(curDecls);
     }
 
     @Override
@@ -855,6 +874,10 @@ class ForControl {
     Assignment firstAssignment = null;
     Assignment secondAssignment = null;
     Expression expression;
+
+    void check(DeclList curDecls) {
+
+    }
 
     static ForControl parse(){
         ForControl forControl = new ForControl();
@@ -940,11 +963,15 @@ class ElsePart extends Statement {
     StatmList body;
 
     static ElsePart parse(){
+        Log.enterParser("<else-part>");
+
         ElsePart elsePart = new ElsePart();
         Scanner.skip(elseToken);
         Scanner.skip(leftCurlToken);
         elsePart.body = StatmList.parse();
         Scanner.skip(rightCurlToken);
+
+        Log.leaveParser("</else-part>");
         return elsePart;
     }
 
@@ -977,7 +1004,7 @@ class ReturnStatm extends  Statement {
 
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
@@ -993,10 +1020,13 @@ class ReturnStatm extends  Statement {
     }
 
     static ReturnStatm parse(){
+        Log.enterParser("<return-stmt");
         ReturnStatm returnStatement = new ReturnStatm();
         Scanner.skip(returnToken);
         returnStatement.expression = Expression.parse();
         Scanner.skip(semicolonToken);
+        Log.leaveParser("</return-statm>");
+
         return returnStatement;
     }
 }
@@ -1118,6 +1148,8 @@ class Expression extends Operand {
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
+        firstTerm.check(curDecls);
+
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1227,11 +1259,14 @@ class FactorOperator extends  Operator {
     }
 
     static FactorOperator parse(){
+        Log.enterParser("<factor-operator>");
+
         FactorOperator factorOperator = new FactorOperator();
 
         factorOperator.opToken = Scanner.curToken;
         Scanner.readNext();     // skip it
 
+        Log.leaveParser("</factor-operator");
         return factorOperator;
     }
 }
