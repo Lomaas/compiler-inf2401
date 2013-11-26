@@ -174,7 +174,17 @@ abstract class DeclList extends SyntaxUnit {
     }
 
     Declaration findDecl(String name, SyntaxUnit usedIn) {
-        //-- Must be changed in part 2:
+        Declaration iter = firstDecl;
+        DeclList scope = this;
+
+        while(scope != null){
+            while(iter != null){
+                if(iter.name.equals(name))
+                    return iter;
+            }
+            scope = scope.outerScope;
+        }
+        Syntax.error(this, "Couldn't find declaration: " + name);
         return null;
     }
 }
@@ -437,7 +447,7 @@ class GlobalSimpleVarDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -619,18 +629,22 @@ class FuncDecl extends Declaration {
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
+        paramDeclList.check(curDecls);
+        body.check(curDecls);
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
         //-- Must be changed in part 2:
+        Syntax.error(this, "Not an array");
+
     }
 
     @Override void checkWhetherFunction(int nParamsUsed, SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        /* OK */
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
-        //-- Must be changed in part 2:
+        Syntax.error(this, "Not an simple var");
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -673,7 +687,8 @@ class FuncBody extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        body.check(localDeclList);
+        localDeclList.check(curDecls);
     }
 
     @Override
@@ -915,10 +930,12 @@ class IfStatm extends Statement {
     StatmList body;
     ElsePart elsePart = null;
 
-    //-- Must be changed in part 1+2:
-
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        test.check(curDecls);
+        body.check(curDecls);
+
+        if(elsePart != null)
+            elsePart.check(curDecls);
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1090,6 +1107,7 @@ class WhileStatm extends Statement {
 
 class ExprList extends SyntaxUnit {
     Expression firstExpr = null;
+    int expressions = 0;
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
@@ -1108,12 +1126,14 @@ class ExprList extends SyntaxUnit {
         if(Scanner.curToken != rightParToken){
             exprList.firstExpr = Expression.parse();
             lastExpr = exprList.firstExpr;
+            exprList.expressions++;
 
             while(Scanner.curToken == commaToken){
                 Scanner.skip(commaToken);
                 Expression expression = Expression.parse();
                 lastExpr.nextExpr = expression;     // assign pointer
                 lastExpr = expression;              // set new last expression
+                exprList.expressions++;
             }
         }
         Log.leaveParser("</expr list>");
@@ -1133,7 +1153,6 @@ class ExprList extends SyntaxUnit {
             addComma = true;
         }
     }
-    //-- Must be changed in part 1:
 }
 
 
@@ -1150,6 +1169,8 @@ class Expression extends Operand {
         //-- Must be changed in part 2:
         firstTerm.check(curDecls);
 
+        if(relOp != null && secondTerm != null)
+           relOp.check(curDecls);
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1471,9 +1492,12 @@ class FunctionCall extends Operand {
     //-- Must be changed in part 2:
     String name;
     ExprList exprList;
+    Declaration refDec = null;
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        refDec = curDecls.findDecl(name, this);
+
+        refDec.checkWhetherFunction(exprList.expressions, this);
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1595,9 +1619,10 @@ class Variable extends Operand {
 
 class AssignStatm extends Statement {
     Assignment assignment = null;
+
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        assignment.check(curDecls);
     }
 
     @Override
@@ -1642,7 +1667,8 @@ class Assignment extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        variable.check(curDecls);
+        expression.check(curDecls);
     }
 
     @Override
@@ -1663,7 +1689,7 @@ class CallStatm extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-
+       functCall.check(curDecls);
     }
 
     @Override
