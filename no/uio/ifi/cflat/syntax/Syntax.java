@@ -897,7 +897,13 @@ class ForControl {
     Expression expression;
 
     void check(DeclList curDecls) {
+        if(firstAssignment != null)
+            firstAssignment.check(curDecls);
 
+        expression.check(curDecls);
+
+        if(secondAssignment != null)
+            secondAssignment.check(curDecls);
     }
 
     static ForControl parse(){
