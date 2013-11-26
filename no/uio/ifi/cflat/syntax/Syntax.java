@@ -179,7 +179,7 @@ abstract class DeclList extends SyntaxUnit {
 
         while(scope != null){
             while(iter != null){
-                if(iter.name.equals(name))
+                if(iter.name.equals(name) && iter.visible == true)
                     return iter;
             }
             scope = scope.outerScope;
@@ -539,7 +539,8 @@ class LocalSimpleVarDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+//        Declaration d = curDecls.findDecl(name,this);
+//        d.checkWhetherSimpleVar(this);
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -629,8 +630,9 @@ class FuncDecl extends Declaration {
 
     @Override void check(DeclList curDecls) {
         //-- Must be changed in part 2:
+        System.out.println("Function declaration");
         paramDeclList.check(curDecls);
-        body.check(curDecls);
+        body.check(paramDeclList);
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -687,8 +689,8 @@ class FuncBody extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        body.check(localDeclList);
         localDeclList.check(curDecls);
+        body.check(localDeclList);
     }
 
     @Override
@@ -733,7 +735,11 @@ class StatmList extends SyntaxUnit {
     Statement firstStatement = null;
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        Statement iter = firstStatement;
+        while(iter != null){
+            iter.check(curDecls);
+            iter = iter.nextStatm;
+        }
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1021,12 +1027,12 @@ class ReturnStatm extends  Statement {
 
     @Override
     void check(DeclList curDecls) {
-
+        expression.check(curDecls);
     }
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
@@ -1302,7 +1308,16 @@ class Term extends SyntaxUnit {
     Operator firstOperator = null;
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        Factor iterFactor = firstFactor;
+        Operator iterOperator = firstOperator;
+        iterFactor.check(curDecls);
+
+        while(iterOperator != null){
+            iterFactor = iterFactor.nextFactor;
+            iterOperator.check(curDecls);
+            iterFactor.check(curDecls);
+            iterOperator = iterOperator.nextOp;
+        }
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1495,9 +1510,10 @@ class FunctionCall extends Operand {
     Declaration refDec = null;
 
     @Override void check(DeclList curDecls) {
+        System.out.println("FunctionCall");
         refDec = curDecls.findDecl(name, this);
-
         refDec.checkWhetherFunction(exprList.expressions, this);
+        exprList.check(curDecls);
     }
 
     @Override void genCode(FuncDecl curFunc) {
