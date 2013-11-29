@@ -82,6 +82,8 @@ class Program extends SyntaxUnit {
 
         if (! Cflat.noLink) {
             // Check that 'main' has been declared properly:
+            Declaration d = curDecls.findDecl("main", this);
+            d.checkWhetherFunction(0, this);
             //-- Must be changed in part 2:
         }
 
@@ -181,6 +183,8 @@ abstract class DeclList extends SyntaxUnit {
             while(iter != null){
                 if(iter.name.equals(name) && iter.visible == true)
                     return iter;
+
+                iter = iter.nextDecl;
             }
             scope = scope.outerScope;
         }
@@ -384,8 +388,6 @@ abstract class VarDecl extends Declaration {
  * A global array declaration
  */
 class GlobalArrayDecl extends VarDecl {
-    Number number = null;
-
     GlobalArrayDecl(String n) {
         super(n);
         assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + n;
@@ -395,6 +397,10 @@ class GlobalArrayDecl extends VarDecl {
         visible = true;
         if (((ArrayType)type).nElems < 0)
             Syntax.error(this, "Arrays cannot have negative size!");
+
+//        Declaration d = curDecls.findDecl(name,this);
+//        d.checkWhetherArray(this);
+//        type.checkType(lineNum, Types.intType, "Array index");
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -447,7 +453,7 @@ class GlobalSimpleVarDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-
+        visible = true;
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -539,8 +545,7 @@ class LocalSimpleVarDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-//        Declaration d = curDecls.findDecl(name,this);
-//        d.checkWhetherSimpleVar(this);
+        visible = true;
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -581,7 +586,7 @@ class ParamDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        visible = true;
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -689,8 +694,13 @@ class FuncBody extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        localDeclList.check(curDecls);
-        body.check(localDeclList);
+        if(localDeclList != null){
+            localDeclList.check(curDecls);
+            body.check(localDeclList);
+        }
+        else {
+            body.check(curDecls);
+        }
     }
 
     @Override
@@ -1028,12 +1038,13 @@ class ElsePart extends Statement {
  * A <return-statm>.
  */
 //-- Must be changed in part 2:
-class ReturnStatm extends  Statement {
+class ReturnStatm extends Statement {
     Expression expression;
 
     @Override
     void check(DeclList curDecls) {
         expression.check(curDecls);
+        expression.valType.checkType(lineNum, expression.valType, "Array index");
     }
 
     @Override
@@ -1122,7 +1133,12 @@ class ExprList extends SyntaxUnit {
     int expressions = 0;
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        Expression iter = firstExpr;
+
+        while(iter != null){
+            iter.check(curDecls);
+            iter = iter.nextExpr;
+        }
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1318,11 +1334,18 @@ class Term extends SyntaxUnit {
         Operator iterOperator = firstOperator;
         iterFactor.check(curDecls);
 
+        Factor prevFactor = iterFactor;
+
         while(iterOperator != null){
             iterFactor = iterFactor.nextFactor;
             iterOperator.check(curDecls);
             iterFactor.check(curDecls);
+
+            if(iterFactor.opType != prevFactor.opType)
+                Syntax.error(this, "Operands has to have the same type");
+
             iterOperator = iterOperator.nextOp;
+            prevFactor = iterFactor;
         }
     }
 
@@ -1382,7 +1405,10 @@ abstract class Operator extends SyntaxUnit {
     Type opType;
     Token opToken;
 
-    @Override void check(DeclList curDecls) {}
+    @Override void check(DeclList curDecls) {
+        /* SKip nothing to check */
+
+    }
 }
 
 class TermOperator extends Operator {
@@ -1510,15 +1536,14 @@ abstract class Operand extends SyntaxUnit {
  * A <function call>.
  */
 class FunctionCall extends Operand {
-    //-- Must be changed in part 2:
     String name;
     ExprList exprList;
-    Declaration refDec = null;
+    FuncDecl funcDecl = null;
 
     @Override void check(DeclList curDecls) {
         System.out.println("FunctionCall");
-        refDec = curDecls.findDecl(name, this);
-        refDec.checkWhetherFunction(exprList.expressions, this);
+        funcDecl = (FuncDecl) curDecls.findDecl(name, this);
+        funcDecl.checkWhetherFunction(exprList.expressions, this);
         exprList.check(curDecls);
     }
 

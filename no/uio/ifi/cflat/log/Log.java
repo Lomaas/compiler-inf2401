@@ -105,7 +105,8 @@ public class Log {
     public static void noteBinding(String name, int lineNum, int useLineNum) {
         if (! doLogBinding) return;
         //-- Must be changed in part 2:
-        writeLogLine("Binding: Line " + Integer.toString(lineNum) + " " + name);
+        writeLogLine("Binding: Line " + Integer.toString(lineNum) + " " + name +
+            " refers to a declaration in line " + Integer.toString(useLineNum));
     }
 
 
