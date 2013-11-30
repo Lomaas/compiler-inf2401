@@ -85,7 +85,7 @@ class Program extends SyntaxUnit {
             Declaration d = progDecls.findDecl("main", this);
             if(d != null){
                d.checkWhetherFunction(0, this);
-                
+               d.type.checkType(lineNum, Types.intType, "int type");
             }
             else {
                 Syntax.error(this, "Name main is unknown!");
@@ -475,7 +475,8 @@ class GlobalSimpleVarDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Code.genVar(assemblerName, true, declSize(),
+                type.typeName() + " " +name+";");
     }
 
     static GlobalSimpleVarDecl parse() {
@@ -660,6 +661,10 @@ class FuncDecl extends Declaration {
         if(name.equals("main") && paramDeclList.numParams > 0){
             Syntax.error(this, "Function 'main' should have no parameters!");
         }
+        else if(paramDeclList.numParams != nParamsUsed)
+            Syntax.error(this, "Calls to " + name + " should have " +
+                    Integer.toString(paramDeclList.numParams) + " parameters, not "+
+                    Integer.toString(nParamsUsed)+ "!");
 
     }
 
@@ -844,7 +849,7 @@ class EmptyStatm extends Statement {
     //-- Must be changed in part 2:
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1134,8 +1139,6 @@ class WhileStatm extends Statement {
 }
 
 
-//-- Must be changed in part 1+2:
-
 
 /*
  * An <expression list>.
@@ -1212,6 +1215,7 @@ class Expression extends Operand {
         if(relOp != null && secondTerm != null){
             relOp.check(curDecls);
             secondTerm.check(curDecls);
+
         }
     }
 
@@ -1254,6 +1258,7 @@ class Factor extends Operator {
     Operand startOperand = null;
     FactorOperator firstFactorOper = null;
     Factor nextFactor = null;
+    Type valType = null;
 
     @Override
     void genCode(FuncDecl curFunc) {
@@ -1263,6 +1268,23 @@ class Factor extends Operator {
     @Override
     void check(DeclList curDecls){
         startOperand.check(curDecls);
+
+        Operand operandIter = startOperand;
+        Operand previousOperand = null;
+        FactorOperator factorOperIter = firstFactorOper;
+
+        while(factorOperIter != null){
+            previousOperand = operandIter;
+            factorOperIter.check(curDecls);
+            operandIter = operandIter.nextOperand;
+            operandIter.check(curDecls);
+
+            operandIter.valType.checkSameType(lineNum, previousOperand.valType,
+                    "Operands");
+
+            factorOperIter = (FactorOperator) factorOperIter.nextOp;
+        }
+        valType = startOperand.valType;
     }
 
     static Factor parse(){
@@ -1330,7 +1352,6 @@ class FactorOperator extends  Operator {
         Log.enterParser("<factor-operator>");
 
         FactorOperator factorOperator = new FactorOperator();
-
         factorOperator.opToken = Scanner.curToken;
         Scanner.readNext();     // skip it
 
@@ -1360,8 +1381,8 @@ class Term extends SyntaxUnit {
             iterOperator.check(curDecls);
             iterFactor.check(curDecls);
 
-            if(iterFactor.opType != prevFactor.opType)
-                Syntax.error(this, "Operands has to have the same type");
+            iterFactor.valType.checkSameType(lineNum, prevFactor.valType,
+                    "Operands");
 
             iterOperator = iterOperator.nextOp;
             prevFactor = iterFactor;
@@ -1608,6 +1629,7 @@ class Number extends Operand {
 
         Number num = new Number();
         num.numVal = Scanner.curNum;
+        num.valType = Types.getType(intToken);
         Scanner.skip(numberToken);
 
         Log.leaveParser("</number>");
@@ -1689,7 +1711,7 @@ class AssignStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
@@ -1731,6 +1753,9 @@ class Assignment extends Statement {
     void check(DeclList curDecls) {
         variable.check(curDecls);
         expression.check(curDecls);
+
+//        if(expression.valType != null)
+//            variable.valType.checkType(lineNum, expression.valType, "type");
     }
 
     @Override
@@ -1771,6 +1796,7 @@ class CallStatm extends Statement {
         CallStatm callStatm = new CallStatm();
         callStatm.functCall = FunctionCall.parse();
         Scanner.skip(semicolonToken);
+
         Log.leaveParser("</call-statm>");
 
         return callStatm;
