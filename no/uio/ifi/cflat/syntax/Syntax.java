@@ -82,9 +82,14 @@ class Program extends SyntaxUnit {
 
         if (! Cflat.noLink) {
             // Check that 'main' has been declared properly:
-            Declaration d = curDecls.findDecl("main", this);
-            d.checkWhetherFunction(0, this);
-            //-- Must be changed in part 2:
+            Declaration d = progDecls.findDecl("main", this);
+            if(d != null){
+               d.checkWhetherFunction(0, this);
+                
+            }
+            else {
+                Syntax.error(this, "Name main is unknown!");
+            }
         }
 
     }
@@ -122,7 +127,7 @@ abstract class DeclList extends SyntaxUnit {
     DeclList outerScope;
 
     DeclList () {
-        //-- Must be changed in part 1:
+
     }
 
     @Override void check(DeclList curDecls) {
@@ -176,10 +181,12 @@ abstract class DeclList extends SyntaxUnit {
     }
 
     Declaration findDecl(String name, SyntaxUnit usedIn) {
-        Declaration iter = firstDecl;
         DeclList scope = this;
+        Declaration iter = null;
 
         while(scope != null){
+            iter = scope.firstDecl;
+
             while(iter != null){
                 if(iter.name.equals(name) && iter.visible == true)
                     return iter;
@@ -261,6 +268,8 @@ class LocalDeclList extends DeclList {
  * (This class is not mentioned in the syntax diagrams.)
  */
 class ParamDeclList extends DeclList {
+    int numParams = 0;
+
     @Override void genCode(FuncDecl curFunc) {
         //-- Must be changed in part 2:
     }
@@ -272,6 +281,7 @@ class ParamDeclList extends DeclList {
             // Type, name
             ParamDecl paramDecl = ParamDecl.parse();
             paramDeclList.addDecl(paramDecl);
+            paramDeclList.numParams++;
 
             if(Scanner.curToken == commaToken){
                 Scanner.skip(commaToken);
@@ -634,7 +644,7 @@ class FuncDecl extends Declaration {
     }
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        visible = true;
         System.out.println("Function declaration");
         paramDeclList.check(curDecls);
         body.check(paramDeclList);
@@ -643,11 +653,14 @@ class FuncDecl extends Declaration {
     @Override void checkWhetherArray(SyntaxUnit use) {
         //-- Must be changed in part 2:
         Syntax.error(this, "Not an array");
-
     }
 
     @Override void checkWhetherFunction(int nParamsUsed, SyntaxUnit use) {
         /* OK */
+        if(name.equals("main") && paramDeclList.numParams > 0){
+            Syntax.error(this, "Function 'main' should have no parameters!");
+        }
+
     }
 
     @Override void checkWhetherSimpleVar(SyntaxUnit use) {
@@ -1044,7 +1057,7 @@ class ReturnStatm extends Statement {
     @Override
     void check(DeclList curDecls) {
         expression.check(curDecls);
-        expression.valType.checkType(lineNum, expression.valType, "Array index");
+        //expression.valType.checkType(lineNum, expression.valType, "Array index");
     }
 
     @Override
@@ -1194,11 +1207,12 @@ class Expression extends Operand {
     boolean innerExpr = false;
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
         firstTerm.check(curDecls);
 
-        if(relOp != null && secondTerm != null)
-           relOp.check(curDecls);
+        if(relOp != null && secondTerm != null){
+            relOp.check(curDecls);
+            secondTerm.check(curDecls);
+        }
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1244,6 +1258,11 @@ class Factor extends Operator {
     @Override
     void genCode(FuncDecl curFunc) {
 
+    }
+
+    @Override
+    void check(DeclList curDecls){
+        startOperand.check(curDecls);
     }
 
     static Factor parse(){
@@ -1395,7 +1414,6 @@ class Term extends SyntaxUnit {
     }
 }
 
-//-- Must be changed in part 1+2:
 
 /*
  * An <operator>
@@ -1406,8 +1424,7 @@ abstract class Operator extends SyntaxUnit {
     Token opToken;
 
     @Override void check(DeclList curDecls) {
-        /* SKip nothing to check */
-
+        // What to do here?
     }
 }
 
@@ -1437,8 +1454,6 @@ class TermOperator extends Operator {
         return termOperator;
     }
 }
-
-//-- Must be changed in part 1+2:
 
 
 /*
@@ -1593,7 +1608,6 @@ class Number extends Operand {
 
         Number num = new Number();
         num.numVal = Scanner.curNum;
-        //num.valType = Types.getType(numberToken);
         Scanner.skip(numberToken);
 
         Log.leaveParser("</number>");
@@ -1617,6 +1631,7 @@ class Variable extends Operand {
     Expression index = null;
 
     @Override void check(DeclList curDecls) {
+        System.out.println("Is variable");
         Declaration d = curDecls.findDecl(varName,this);
         if (index == null) {
             d.checkWhetherSimpleVar(this);
