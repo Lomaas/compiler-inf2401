@@ -740,8 +740,8 @@ class FuncDecl extends Declaration {
         Code.genInstr("", ".globl", assemblerName,"");
         Code.genInstr(name + ":", "enter", "$" + body.localDeclList.dataSize() + ", $0",
                 "Start funksjon " + name);
-        paramDeclList.genCode(curFunc);
-        body.genCode(curFunc);
+        paramDeclList.genCode(this);
+        body.genCode(this);
 
         if(type == Types.doubleType)
             Code.genInstr("", "fldz", "", "");
@@ -1323,7 +1323,6 @@ class Expression extends Operand {
 
             valType.checkType(secondTerm.lineNum, secondTerm.type, "terms");
         }
-
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1743,7 +1742,6 @@ class FunctionCall extends Operand {
         exprList.printTree();
         Log.wTree(")");
     }
-    //-- Must be changed in part 1+2:
 }
 
 
