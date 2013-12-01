@@ -91,7 +91,6 @@ class Program extends SyntaxUnit {
                 Syntax.error(this, "Name main is unknown!");
             }
         }
-
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -176,7 +175,11 @@ abstract class DeclList extends SyntaxUnit {
 
     int dataSize() {
         int res = 0;
-        //-- Must be changed in part 2:
+        Declaration iter = firstDecl;
+        while (iter != null) {
+            res += iter.declSize();
+            iter = iter.nextDecl;
+        }
         return res;
     }
 
@@ -217,6 +220,10 @@ class GlobalDeclList extends DeclList {
 
     static GlobalDeclList parse() {
         GlobalDeclList gdl = new GlobalDeclList();
+//        gdl.addDecl(new FuncDecl("putchar"));
+//        gdl.addDecl(new FuncDecl("putint"));
+//        gdl.addDecl(new FuncDecl("putdouble"));
+//        gdl.addDecl(new FuncDecl("exit"));
         Scanner.readNext();
         Scanner.readNext();
         Scanner.readNext();
@@ -704,7 +711,6 @@ class FuncDecl extends Declaration {
 
     @Override void check(DeclList curDecls) {
         visible = true;
-        System.out.println("Function declaration");
         paramDeclList.check(curDecls);
         body.check(paramDeclList);
     }
@@ -815,8 +821,7 @@ class FuncBody extends Statement {
         FuncBody fb = new FuncBody();
         Scanner.skip(leftCurlToken);
 
-        if(Token.isTypeName(Scanner.curToken))
-            fb.localDeclList = LocalDeclList.parse();
+        fb.localDeclList = LocalDeclList.parse();
 
         fb.body = StatmList.parse();
         Scanner.skip(rightCurlToken);
@@ -1147,9 +1152,10 @@ class ReturnStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
+        expression.valType.checkType(lineNum, curFunc.type, "Return value");    // checks return type is correct
         expression.genCode(curFunc);
-
-        Code.genInstr("", "jmp", ".exit$" + );
+        System.out.println("Funk name return statement: " + curFunc.assemblerName);
+        Code.genInstr("", "jmp", ".exit$" + curFunc.assemblerName, "");
     }
 
     @Override
@@ -1228,6 +1234,7 @@ class WhileStatm extends Statement {
 
 class ExprList extends SyntaxUnit {
     Expression firstExpr = null;
+    Expression lastExpr = null;
     int expressions = 0;
 
     @Override void check(DeclList curDecls) {
@@ -1251,19 +1258,18 @@ class ExprList extends SyntaxUnit {
     static ExprList parse() {
         Log.enterParser("<expr list>");
 
-        Expression lastExpr = null;
         ExprList exprList = new ExprList();
 
         if(Scanner.curToken != rightParToken){
             exprList.firstExpr = Expression.parse();
-            lastExpr = exprList.firstExpr;
+            exprList.lastExpr = exprList.firstExpr;
             exprList.expressions++;
 
             while(Scanner.curToken == commaToken){
                 Scanner.skip(commaToken);
                 Expression expression = Expression.parse();
-                lastExpr.nextExpr = expression;     // assign pointer
-                lastExpr = expression;              // set new last expression
+                exprList.lastExpr.nextExpr = expression;     // assign pointer
+                exprList.lastExpr = expression;              // set new last expression
                 exprList.expressions++;
             }
         }
@@ -1284,6 +1290,17 @@ class ExprList extends SyntaxUnit {
             addComma = true;
         }
     }
+
+    int dataSize(){
+        int size = 0;
+
+        Expression iter = firstExpr;
+        while(iter!= null){
+            size += iter.valType.size();
+            iter = iter.nextExpr;
+        }
+        return size;
+    }
 }
 
 
@@ -1298,12 +1315,15 @@ class Expression extends Operand {
 
     @Override void check(DeclList curDecls) {
         firstTerm.check(curDecls);
+        valType = firstTerm.type;
 
         if(relOp != null && secondTerm != null){
             relOp.check(curDecls);
             secondTerm.check(curDecls);
 
+            valType.checkType(secondTerm.lineNum, secondTerm.type, "terms");
         }
+
     }
 
     @Override void genCode(FuncDecl curFunc) {
@@ -1460,11 +1480,15 @@ class Term extends SyntaxUnit {
     //-- Must be changed in part 2:
     Factor firstFactor = null;
     Operator firstOperator = null;
+    Type type;
+
 
     @Override void check(DeclList curDecls) {
         Factor iterFactor = firstFactor;
         Operator iterOperator = firstOperator;
         iterFactor.check(curDecls);
+        type = iterFactor.valType;
+
 
         Factor prevFactor = iterFactor;
 
@@ -1475,7 +1499,6 @@ class Term extends SyntaxUnit {
 
             iterFactor.valType.checkSameType(lineNum, prevFactor.valType,
                     "Operands");
-
             iterOperator = iterOperator.nextOp;
             prevFactor = iterFactor;
         }
@@ -1672,14 +1695,32 @@ class FunctionCall extends Operand {
         System.out.println("FunctionCall");
         funcDecl = (FuncDecl) curDecls.findDecl(name, this);
         funcDecl.checkWhetherFunction(exprList.expressions, this);
+        valType = funcDecl.type;
         exprList.check(curDecls);
+        Expression iter = exprList.firstExpr;
+        Declaration d = funcDecl.paramDeclList.firstDecl;
+        int numParam = 0;
+
+        while(iter != null){
+            iter.valType.checkType(exprList.lineNum, d.type,
+                    "Parameter num: " + Integer.toString(numParam));
+
+            iter = iter.nextExpr;
+            d = d.nextDecl;
+            numParam++;
+        }
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        Code.genInstr("", "call", name, "");
+        exprList.genCode(curFunc);
+        Code.genInstr("", "call", curFunc.assemblerName, "Call " + curFunc.assemblerName);
 
-        if(valType == Types.doubleType){
-            Code.genInstr("", "fstps", Code.tmpLabel, "");
+        if (funcDecl.type == Types.doubleType){
+            Code.genInstr("", "fstps", Code.tmpLabel, "Remove return valeu");
+        }
+        int size = exprList.dataSize();
+        if (size > 0){
+            Code.genInstr("", "addl", "$" + size + ",%esp", "Remove parameters");
         }
     }
 
