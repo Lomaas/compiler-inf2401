@@ -207,7 +207,12 @@ abstract class DeclList extends SyntaxUnit {
  */
 class GlobalDeclList extends DeclList {
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Declaration iter = firstDecl;
+
+        while(iter != null){
+            iter.genCode(curFunc);
+            iter = iter.nextDecl;
+        }
     }
 
     static GlobalDeclList parse() {
@@ -240,7 +245,15 @@ class GlobalDeclList extends DeclList {
  */
 class LocalDeclList extends DeclList {
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Declaration iter = firstDecl;
+        int decSize = 0;
+
+        while(iter != null){
+            decSize = decSize - iter.declSize();    // calculate position stack
+            iter.assemblerName = decSize + "(%ebp)";
+            iter.genCode(curFunc);
+            iter = iter.nextDecl;
+        }
     }
 
     static LocalDeclList parse() {
@@ -271,7 +284,15 @@ class ParamDeclList extends DeclList {
     int numParams = 0;
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Declaration iter = firstDecl;
+        int decSize = 0;
+
+        while(iter != null){
+            decSize += iter.declSize();
+            iter.assemblerName = decSize + "($ebp)";
+            iter.genCode(curFunc);
+            iter = iter.nextDecl;
+        }
     }
 
     static ParamDeclList parse() {
@@ -390,7 +411,25 @@ abstract class VarDecl extends Declaration {
         Log.wTreeLn(";");
     }
 
-    //-- Must be changed in part 1+2:
+    void genStore(Type valType){
+        if(type == Types.doubleType && valType == Types.doubleType){
+            Code.genInstr("", "fstpl", assemblerName, name + " =");
+        }
+        else if(type == Types.doubleType && valType == Types.intType){
+            Code.genInstr("", "movl", "%eax, " + Code.tmpLabel, "");
+            Code.genInstr("", "fildl", Code.tmpLabel, "     (double)");
+            Code.genInstr("", "fstpl", assemblerName, name + " =");
+        }
+        else if(type == Types.intType && valType == Types.doubleType){
+            Code.genInstr("", "fistpl", assemblerName, name + " = (int)");
+        }
+        else if(type==Types.intType && valType == Types.intType){
+            Code.genInstr("", "movl", "%eax," + assemblerName, name + " =");
+        }
+        else {
+            Error.panic("Declaration.genStore");
+        }
+    }
 }
 
 
@@ -422,7 +461,8 @@ class GlobalArrayDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Code.genVar(assemblerName, true, declSize(),
+                type.typeName() + " " + name + ";");
     }
 
     static GlobalArrayDecl parse() {
@@ -503,7 +543,10 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void check(DeclList curDecls) {
-        //-- Must be changed in part 2:
+        visible = true;
+
+        if (((ArrayType) type).nElems < 0)
+            Syntax.error(this, "Arrays cannot have negative size!");
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -515,7 +558,17 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        // Beregn fe med svar på flytallsstakken
+        // TODO check if correct
+
+        if(type == Types.intType){
+            Code.genInstr("", "leal", assemblerName + ", %edx", "");
+            Code.genInstr("", "movl", "(%edx, %eax, 4), %eax", "");
+        }
+        else if(type == Types.doubleType){
+            Code.genInstr("", "leal", assemblerName+ ", %edx", "");
+            Code.genInstr("", "movl", "(%edx, %eax, 8), %eax", "");
+        }
     }
 
     static LocalArrayDecl parse() {
@@ -568,7 +621,12 @@ class LocalSimpleVarDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        // TODO Helttall? movl $<n>, %eax
+
+        if(type == Types.intType)
+            Code.genInstr("", "movl", assemblerName + ", %eax", "     (int)");
+        else if(type == Types.doubleType)
+            Code.genInstr("", "fldl", assemblerName, "  (double)");
     }
 
     static LocalSimpleVarDecl parse() {
@@ -673,7 +731,18 @@ class FuncDecl extends Declaration {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Code.genInstr("", ".globl", assemblerName,"");
+        Code.genInstr(name + ":", "enter", "$" + body.localDeclList.dataSize() + ", $0",
+                "Start funksjon " + name);
+        paramDeclList.genCode(curFunc);
+        body.genCode(curFunc);
+
+        if(type == Types.doubleType)
+            Code.genInstr("", "fldz", "", "");
+
+        Code.genInstr("", ".exit$" + assemblerName,"", "");
+        Code.genInstr("", "leave", "", "");
+        Code.genInstr("", "ret", "", "End function " + name);
     }
 
     static FuncDecl parse() {
@@ -707,8 +776,8 @@ class FuncDecl extends Declaration {
  */
 
 class FuncBody extends Statement {
-    StatmList body;
     LocalDeclList localDeclList = null;
+    StatmList body;
 
     @Override
     void check(DeclList curDecls) {
@@ -723,7 +792,8 @@ class FuncBody extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        localDeclList.genCode(curFunc);
+        body.genCode(curFunc);
     }
 
     @Override
@@ -771,7 +841,11 @@ class StatmList extends SyntaxUnit {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Statement iter = firstStatement;
+        while(iter != null){
+            iter.genCode(curFunc);
+            iter = iter.nextStatm;
+        }
     }
 
     static StatmList parse() {
@@ -886,7 +960,7 @@ class ForStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
@@ -979,7 +1053,13 @@ class IfStatm extends Statement {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        test.genCode(curFunc);
+
+
+        if(elsePart != null){
+
+            elsePart.genCode(curFunc);
+        }
     }
 
     static IfStatm parse() {
@@ -1067,7 +1147,9 @@ class ReturnStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
+        expression.genCode(curFunc);
 
+        Code.genInstr("", "jmp", ".exit$" + );
     }
 
     @Override
@@ -1158,7 +1240,12 @@ class ExprList extends SyntaxUnit {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Expression iter = firstExpr;
+
+        while(iter != null){
+            iter.genCode(curFunc);
+            iter = iter.nextExpr;
+        }
     }
 
     static ExprList parse() {
@@ -1220,7 +1307,12 @@ class Expression extends Operand {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        firstTerm.genCode(curFunc);
+
+        if(relOp != null && secondTerm != null){
+            relOp.genCode(curFunc);
+            secondTerm.genCode(curFunc);
+        }
     }
 
     static Expression parse() {
@@ -1584,7 +1676,11 @@ class FunctionCall extends Operand {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        Code.genInstr("", "call", name, "");
+
+        if(valType == Types.doubleType){
+            Code.genInstr("", "fstps", Code.tmpLabel, "");
+        }
     }
 
     static FunctionCall parse() {
@@ -1711,7 +1807,7 @@ class AssignStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-
+        assignment.genCode(curFunc);
     }
 
     @Override
@@ -1760,7 +1856,49 @@ class Assignment extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        if(variable.index != null){
+            // array.
+            // Ved alle int-operander er innom %EAX
+
+            variable.index.genCode(curFunc);
+            Code.genInstr("", "pushl", "%eax", ""); // push index on stack
+            expression.genCode(curFunc);
+
+            Type type = ((ArrayType)variable.declRef.type).elemType;
+            String varName = variable.declRef.name;
+            String assemblerName = variable.declRef.assemblerName;
+
+            if (type == Types.intType && expression.valType == Types.intType){
+                Code.genInstr("", "leal", assemblerName + ", %edx", "");
+                Code.genInstr("", "popl", "%eax", "");
+                Code.genInstr("", "movl", "(%edx, %eax, 4), %eax", varName + "[..] = ");
+            }
+            else if (type == Types.doubleType && expression.valType == Types.doubleType){
+                Code.genInstr("", "leal", assemblerName + ", %edx", "");
+                Code.genInstr("", "popl", "%eax", "");
+                Code.genInstr("", "fldl", "(%edx, %eax, 8), %eax", varName + "[..] = ");
+            }
+            else if(type == Types.doubleType && expression.valType == Types.intType){
+                Code.genInstr("", "leal", assemblerName + ", %edx", "");
+                Code.genInstr("", "popl", "%ecx", "");
+                Code.genInstr("", "movl", "%eax, " + Code.tmpLabel, "");
+                Code.genInstr("", "fildl", Code.tmpLabel, "     (double)");
+                Code.genInstr("", "fistpl", "(%edx, %ecx, 8)", varName + "[..] = ");
+
+            }
+            else if(type == Types.intType && expression.valType == Types.doubleType){
+                Code.genInstr("", "leal", assemblerName + ", %edx", "");
+                Code.genInstr("", "popl", "%ecx", "");
+                Code.genInstr("", "fistpl", "(%edx, %ecx, 4)", varName + "[..] = ");
+            }
+            else {
+                Error.panic("Declaration.genStore");
+            }
+        }
+        else {
+            expression.genCode(curFunc);
+            variable.declRef.genStore(expression.valType);
+        }
     }
 
     @Override
@@ -1781,7 +1919,7 @@ class CallStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
-
+        functCall.genCode(curFunc);
     }
 
     @Override
