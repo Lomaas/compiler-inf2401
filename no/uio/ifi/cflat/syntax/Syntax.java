@@ -565,17 +565,17 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        // Beregn fe med svar på flytallsstakken
-        // TODO check if correct
-
-        if(type == Types.intType){
-            Code.genInstr("", "leal", assemblerName + ", %edx", "");
-            Code.genInstr("", "movl", "(%edx, %eax, 4), %eax", "");
-        }
-        else if(type == Types.doubleType){
-            Code.genInstr("", "leal", assemblerName+ ", %edx", "");
-            Code.genInstr("", "movl", "(%edx, %eax, 8), %eax", "");
-        }
+//        // Beregn fe med svar på flytallsstakken
+//        // TODO check if correct
+//
+//        if(type == Types.intType){
+//            Code.genInstr("", "leal", assemblerName + ", %edx", "");
+//            Code.genInstr("", "movl", "(%edx, %eax, 4), %eax", "");
+//        }
+//        else if(type == Types.doubleType){
+//            Code.genInstr("", "leal", assemblerName+ ", %edx", "");
+//            Code.genInstr("", "movl", "(%edx, %eax, 8), %eax", "");
+//        }
     }
 
     static LocalArrayDecl parse() {
@@ -628,12 +628,11 @@ class LocalSimpleVarDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        // TODO Helttall? movl $<n>, %eax
-
-        if(type == Types.intType)
-            Code.genInstr("", "movl", assemblerName + ", %eax", "     (int)");
-        else if(type == Types.doubleType)
-            Code.genInstr("", "fldl", assemblerName, "  (double)");
+//
+//        if(type == Types.intType)
+//            Code.genInstr("", "movl", assemblerName + ", %eax", "     (int)");
+//        else if(type == Types.doubleType)
+//            Code.genInstr("", "fldl", assemblerName, "  (double)");
     }
 
     static LocalSimpleVarDecl parse() {
@@ -738,7 +737,7 @@ class FuncDecl extends Declaration {
 
     @Override void genCode(FuncDecl curFunc) {
         Code.genInstr("", ".globl", assemblerName,"");
-        Code.genInstr(name + ":", "enter", "$" + body.localDeclList.dataSize() + ", $0",
+        Code.genInstr(assemblerName, "enter", "$" + body.localDeclList.dataSize() + ", $0",
                 "Start funksjon " + name);
         paramDeclList.genCode(this);
         body.genCode(this);
@@ -746,7 +745,7 @@ class FuncDecl extends Declaration {
         if(type == Types.doubleType)
             Code.genInstr("", "fldz", "", "");
 
-        Code.genInstr("", ".exit$" + assemblerName,"", "");
+        Code.genInstr(".exit$" +name, "","", "");
         Code.genInstr("", "leave", "", "");
         Code.genInstr("", "ret", "", "End function " + name);
     }
@@ -1373,7 +1372,35 @@ class Factor extends Operator {
 
     @Override
     void genCode(FuncDecl curFunc) {
+        startOperand.genCode(curFunc);
+        Operand iter = startOperand.nextOperand;
+        Operator iterOp = firstFactorOper;
 
+        if(iter != null){
+            Code.genInstr("", "pushl", "%eax", "");
+        }
+        while(iter != null){
+            if(valType == Types.intType){
+                if(iterOp != null && iterOp.opToken == Token.divideToken){
+                    iter.genCode(curFunc);
+                    Code.genInstr("", "movl", "%eax, %ecx", "");
+                    Code.genInstr("", "popl", "%eax", "");
+                    Code.genInstr("", "cdq", "", "");
+                    Code.genInstr("", "idivl", "%ecx", "");
+                }
+                else if(iterOp != null && iterOp.opToken == Token.multiplyToken){
+                    iter.genCode(curFunc);
+                    Code.genInstr("", "movl", "%eax, %ecx", "");
+                    Code.genInstr("", "popl", "%eax", "");
+                    Code.genInstr("", "imull", "%ecx, %eax", "");
+                }
+                iter = iter.nextOperand;
+                iterOp = iterOp.nextOp;
+            }
+            else if(valType == Types.doubleType){
+
+            }
+        }
     }
 
     @Override
@@ -1448,7 +1475,7 @@ class Factor extends Operator {
 class FactorOperator extends  Operator {
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+
     }
 
     @Override
@@ -1504,7 +1531,48 @@ class Term extends SyntaxUnit {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        firstFactor.genCode(curFunc);
+
+        Factor iter = firstFactor.nextFactor;
+        Operator iterOp = firstOperator;
+
+        if(iter != null){
+            Code.genInstr("", "pushl", "%eax", "");
+        }
+
+        while(iter != null){
+            if(type == Types.intType){
+                if(iterOp != null && iterOp.opToken == Token.addToken){
+                    iter.genCode(curFunc);
+                    Code.genInstr("", "movl", "%eax, %ecx", "");
+                    Code.genInstr("", "popl", "%eax", "");
+                    Code.genInstr("", "addl", "%ecx, %eax", "");
+                }
+                else if(iterOp != null && iterOp.opToken == Token.subtractToken){
+                    iter.genCode(curFunc);
+                    Code.genInstr("", "movl", "%eax, %ecx", "");
+                    Code.genInstr("", "popl", "%eax", "");
+                    Code.genInstr("", "subl", "%ecx, %eax", "");
+                }
+            }
+            else if(type == Types.doubleType){
+                if(iterOp != null){
+                    Code.genInstr("", "subl", "$8, %esp", "");
+                    Code.genInstr("", "fstpl", "(%esp)", "");
+                    iter.genCode(curFunc);
+                    Code.genInstr("", "fldl", "(%esp)", "# ");
+                    Code.genInstr("", "addl", "$8, %esp", "");
+
+                    if(iterOp.opToken == Token.subtractToken)
+                        Code.genInstr("", "fsubp", "", "");
+                    else if(iterOp.opToken == Token.addToken){
+                        Code.genInstr("", "faddp", "", "");
+                    }
+                }
+            }
+            iter = iter.nextFactor;
+            iterOp = iterOp.nextOp;
+        }
     }
 
     static Term parse() {

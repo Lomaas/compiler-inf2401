@@ -124,7 +124,7 @@ public class Cflat {
         String pName = sourceBaseName;
         if (pName.equals(sourceName)) pName += ".exe";
         String sName = sourceBaseName + ".s";
-        String cLib = (underscoredGlobals() ? "cflatus" : "cflat");
+        String cLib = (underscoredGlobals() ? "cflat" : "cflat");
 
         String arg[];
         if (noLink) {
