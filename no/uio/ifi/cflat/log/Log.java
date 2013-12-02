@@ -104,9 +104,12 @@ public class Log {
 
     public static void noteBinding(String name, int lineNum, int useLineNum) {
         if (! doLogBinding) return;
-        //-- Must be changed in part 2:
-        writeLogLine("Binding: Line " + Integer.toString(lineNum) + " " + name +
-            " refers to a declaration in line " + Integer.toString(useLineNum));
+
+        if(lineNum < 0)
+            writeLogLine("Binding: Library reference " + name);
+        else
+            writeLogLine("Binding: Line " + Integer.toString(lineNum) + " " + name +
+                " refers to a declaration in line " + Integer.toString(useLineNum));
     }
 
 

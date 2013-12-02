@@ -24,7 +24,86 @@ public class Syntax {
     static Program program;
 
     public static void init() {
+        library = new GlobalDeclList();
+        FuncDecl funcDecl = new FuncDecl("putchar");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 1;
+        funcDecl.type = Types.intType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "putchar";
 
+        ParamDecl paramDecl = new ParamDecl("character");
+        paramDecl.type = Types.intType;
+        funcDecl.paramDeclList.addDecl(paramDecl);
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("getchar");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 0;
+        funcDecl.type = Types.intType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "getchar";
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("exit");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 1;
+        funcDecl.type = Types.intType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "exit";
+
+        paramDecl = new ParamDecl("status");
+        paramDecl.type = Types.intType;
+        funcDecl.paramDeclList.addDecl(paramDecl);
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("getdouble");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 0;
+        funcDecl.type = Types.doubleType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "getdouble";
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("getint");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 0;
+        funcDecl.type = Types.intType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "getint";
+
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("putint");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 1;
+        funcDecl.type = Types.intType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "putint";
+
+        paramDecl = new ParamDecl("c");
+        paramDecl.type = Types.intType;
+        funcDecl.paramDeclList.addDecl(paramDecl);
+        library.addDecl(funcDecl);
+
+        funcDecl = new FuncDecl("putdouble");
+        funcDecl.paramDeclList = new ParamDeclList();
+        funcDecl.paramDeclList.numParams = 1;
+        funcDecl.type = Types.doubleType;
+        funcDecl.visible = true;
+        funcDecl.lineNum = -1;
+        funcDecl.assemblerName = (Cflat.underscoredGlobals() ? "_" : "") + "putdouble";
+
+        paramDecl = new ParamDecl("c");
+        paramDecl.type = Types.doubleType;
+        funcDecl.paramDeclList.addDecl(paramDecl);
+        library.addDecl(funcDecl);
     }
 
     public static void finish() {
@@ -78,6 +157,7 @@ class Program extends SyntaxUnit {
     DeclList progDecls;
 
     @Override void check(DeclList curDecls) {
+
         progDecls.check(curDecls);
 
         if (! Cflat.noLink) {
@@ -191,9 +271,10 @@ abstract class DeclList extends SyntaxUnit {
             iter = scope.firstDecl;
 
             while(iter != null){
-                if(iter.name.equals(name) && iter.visible == true)
+                if(iter.name.equals(name) && iter.visible == true){
+                    Log.noteBinding(name, iter.lineNum, lineNum);
                     return iter;
-
+                }
                 iter = iter.nextDecl;
             }
             scope = scope.outerScope;
@@ -220,10 +301,6 @@ class GlobalDeclList extends DeclList {
 
     static GlobalDeclList parse() {
         GlobalDeclList gdl = new GlobalDeclList();
-//        gdl.addDecl(new FuncDecl("putchar"));
-//        gdl.addDecl(new FuncDecl("putint"));
-//        gdl.addDecl(new FuncDecl("putdouble"));
-//        gdl.addDecl(new FuncDecl("exit"));
         Scanner.readNext();
         Scanner.readNext();
         Scanner.readNext();
@@ -292,11 +369,11 @@ class ParamDeclList extends DeclList {
 
     @Override void genCode(FuncDecl curFunc) {
         Declaration iter = firstDecl;
-        int decSize = 0;
+        int decSize = 8;
 
         while(iter != null){
+            iter.assemblerName = decSize + "(%ebp)";
             decSize += iter.declSize();
-            iter.assemblerName = decSize + "($ebp)";
             iter.genCode(curFunc);
             iter = iter.nextDecl;
         }
@@ -398,7 +475,7 @@ abstract class Declaration extends SyntaxUnit {
 
 
 /*
- * A <var decl>
+ * A <var decl> OK
  */
 abstract class VarDecl extends Declaration {
     VarDecl(String n) {
@@ -454,9 +531,6 @@ class GlobalArrayDecl extends VarDecl {
         if (((ArrayType)type).nElems < 0)
             Syntax.error(this, "Arrays cannot have negative size!");
 
-//        Declaration d = curDecls.findDecl(name,this);
-//        d.checkWhetherArray(this);
-//        type.checkType(lineNum, Types.intType, "Array index");
     }
 
     @Override void checkWhetherArray(SyntaxUnit use) {
@@ -523,7 +597,7 @@ class GlobalSimpleVarDecl extends VarDecl {
 
     @Override void genCode(FuncDecl curFunc) {
         Code.genVar(assemblerName, true, declSize(),
-                type.typeName() + " " +name+";");
+                type.typeName() + " " +name + ";");
     }
 
     static GlobalSimpleVarDecl parse() {
@@ -565,7 +639,6 @@ class LocalArrayDecl extends VarDecl {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-//        // Beregn fe med svar på flytallsstakken
 //        // TODO check if correct
 //
 //        if(type == Types.intType){
@@ -964,7 +1037,23 @@ class ForStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
+        if (forControl.firstAssignment != null){
+            forControl.firstAssignment.genCode(curFunc);
+        }
+        String testLabel = Code.getLocalLabel(),
+                endLabel = Code.getLocalLabel();
 
+        Code.genInstr(testLabel, "", "", "Start for-statement");
+        forControl.expression.genCode(curFunc);
+        forControl.expression.valType.genJumpIfZero(endLabel);
+
+        statmList.genCode(curFunc);
+        if (forControl.secondAssignment != null){
+            forControl.secondAssignment.genCode(curFunc);
+        }
+
+        Code.genInstr("", "jmp", testLabel, "");
+        Code.genInstr(endLabel, "", "", "End for-statement");
     }
 
     @Override
@@ -1057,12 +1146,30 @@ class IfStatm extends Statement {
     }
 
     @Override void genCode(FuncDecl curFunc) {
+        Code.genInstr("", "", "", "Start if-statement");
         test.genCode(curFunc);
+        String label = Code.getLocalLabel();
 
+        if(test.valType == Types.intType){
+            Code.genInstr("", "cmpl", "$0, %eax", "");
+        }
+        else if(test.valType == Types.doubleType){
+            Code.genInstr("", "fstps", Code.tmpLabel, "");
+            Code.genInstr("", "cmpl", "$0," + Code.tmpLabel, "");
+        }
+
+        test.valType.genJumpIfZero(label);
+        body.genCode(curFunc);
 
         if(elsePart != null){
-
+            String label2 = Code.getLocalLabel();
+            Code.genInstr("", "jmp", label2, "");
+            Code.genInstr(label, "", "", "Else-part");
             elsePart.genCode(curFunc);
+            Code.genInstr(label2, "", "", "End if-statement");
+        }
+        else{
+            Code.genInstr(label, "", "", "End if-statement");
         }
     }
 
@@ -1118,12 +1225,12 @@ class ElsePart extends Statement {
 
     @Override
     void check(DeclList curDecls) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        body.check(curDecls);
     }
 
     @Override
     void genCode(FuncDecl curFunc) {
-        //To change body of implemented methods use File | Settings | File Templates.
+        body.genCode(curFunc);
     }
 
     @Override
@@ -1153,8 +1260,7 @@ class ReturnStatm extends Statement {
     void genCode(FuncDecl curFunc) {
         expression.valType.checkType(lineNum, curFunc.type, "Return value");    // checks return type is correct
         expression.genCode(curFunc);
-        System.out.println("Funk name return statement: " + curFunc.assemblerName);
-        Code.genInstr("", "jmp", ".exit$" + curFunc.assemblerName, "");
+        Code.genInstr("", "jmp", ".exit$" + curFunc.name, "");
     }
 
     @Override
@@ -1328,8 +1434,16 @@ class Expression extends Operand {
         firstTerm.genCode(curFunc);
 
         if(relOp != null && secondTerm != null){
-            relOp.genCode(curFunc);
+
+            if(firstTerm.type == Types.intType){
+                Code.genInstr("", "pushl", "%eax", "");
+            }
+            else {
+                Code.genInstr("", "subl", "$8, %esp", "");
+                Code.genInstr("", "fstpl", "(%esp)", "");
+            }
             secondTerm.genCode(curFunc);
+            relOp.genCode(curFunc);
         }
     }
 
@@ -1376,30 +1490,38 @@ class Factor extends Operator {
         Operand iter = startOperand.nextOperand;
         Operator iterOp = firstFactorOper;
 
-        if(iter != null){
-            Code.genInstr("", "pushl", "%eax", "");
-        }
         while(iter != null){
             if(valType == Types.intType){
+                Code.genInstr("", "pushl", "%eax", "");
+                iter.genCode(curFunc);
+                Code.genInstr("", "movl", "%eax, %ecx", "");
+                Code.genInstr("", "popl", "%eax", "");
+
                 if(iterOp != null && iterOp.opToken == Token.divideToken){
-                    iter.genCode(curFunc);
-                    Code.genInstr("", "movl", "%eax, %ecx", "");
-                    Code.genInstr("", "popl", "%eax", "");
                     Code.genInstr("", "cdq", "", "");
-                    Code.genInstr("", "idivl", "%ecx", "");
+                    Code.genInstr("", "idivl", "%ecx", "Compute /");
                 }
                 else if(iterOp != null && iterOp.opToken == Token.multiplyToken){
-                    iter.genCode(curFunc);
-                    Code.genInstr("", "movl", "%eax, %ecx", "");
-                    Code.genInstr("", "popl", "%eax", "");
-                    Code.genInstr("", "imull", "%ecx, %eax", "");
+                    Code.genInstr("", "imull", "%ecx, %eax", "Compute *");
                 }
-                iter = iter.nextOperand;
-                iterOp = iterOp.nextOp;
             }
             else if(valType == Types.doubleType){
+                Code.genInstr("", "subl", "$8, %esp", "");
+                Code.genInstr("", "fstpl", "(%esp)", "");
+                iter.genCode(curFunc);
+                Code.genInstr("", "fldl", "(%esp)", "");
+                Code.genInstr("", "addl", "$8, %esp", "");
 
+                if(iterOp != null && iterOp.opToken == Token.divideToken){
+                    Code.genInstr("", "fdivp", "", "Compute /");
+                }
+                else if(iterOp != null && iterOp.opToken == Token.multiplyToken){
+                    Code.genInstr("", "fmulp", "", "Compute *");
+                }
             }
+            iterOp.genCode(curFunc);
+            iter = iter.nextOperand;
+            iterOp = iterOp.nextOp;
         }
     }
 
@@ -1476,6 +1598,8 @@ class FactorOperator extends  Operator {
     @Override
     void genCode(FuncDecl curFunc) {
 
+
+
     }
 
     @Override
@@ -1515,7 +1639,6 @@ class Term extends SyntaxUnit {
         iterFactor.check(curDecls);
         type = iterFactor.valType;
 
-
         Factor prevFactor = iterFactor;
 
         while(iterOperator != null){
@@ -1542,16 +1665,14 @@ class Term extends SyntaxUnit {
 
         while(iter != null){
             if(type == Types.intType){
+                iter.genCode(curFunc);
+                Code.genInstr("", "movl", "%eax, %ecx", "");
+                Code.genInstr("", "popl", "%eax", "");
+
                 if(iterOp != null && iterOp.opToken == Token.addToken){
-                    iter.genCode(curFunc);
-                    Code.genInstr("", "movl", "%eax, %ecx", "");
-                    Code.genInstr("", "popl", "%eax", "");
                     Code.genInstr("", "addl", "%ecx, %eax", "");
                 }
                 else if(iterOp != null && iterOp.opToken == Token.subtractToken){
-                    iter.genCode(curFunc);
-                    Code.genInstr("", "movl", "%eax, %ecx", "");
-                    Code.genInstr("", "popl", "%eax", "");
                     Code.genInstr("", "subl", "%ecx, %eax", "");
                 }
             }
@@ -1564,12 +1685,13 @@ class Term extends SyntaxUnit {
                     Code.genInstr("", "addl", "$8, %esp", "");
 
                     if(iterOp.opToken == Token.subtractToken)
-                        Code.genInstr("", "fsubp", "", "");
+                        Code.genInstr("", "fsubp", "", "Compute -");
                     else if(iterOp.opToken == Token.addToken){
-                        Code.genInstr("", "faddp", "", "");
+                        Code.genInstr("", "faddp", "", "Compute +");
                     }
                 }
             }
+            iterOp.genCode(curFunc);
             iter = iter.nextFactor;
             iterOp = iterOp.nextOp;
         }
@@ -1759,7 +1881,6 @@ class FunctionCall extends Operand {
     FuncDecl funcDecl = null;
 
     @Override void check(DeclList curDecls) {
-        System.out.println("FunctionCall");
         funcDecl = (FuncDecl) curDecls.findDecl(name, this);
         funcDecl.checkWhetherFunction(exprList.expressions, this);
         valType = funcDecl.type;
@@ -1780,7 +1901,7 @@ class FunctionCall extends Operand {
 
     @Override void genCode(FuncDecl curFunc) {
         exprList.genCode(curFunc);
-        Code.genInstr("", "call", curFunc.assemblerName, "Call " + curFunc.assemblerName);
+        Code.genInstr("", "call", funcDecl.assemblerName, "Call " + funcDecl.assemblerName);
 
         if (funcDecl.type == Types.doubleType){
             Code.genInstr("", "fstps", Code.tmpLabel, "Remove return valeu");
@@ -1856,7 +1977,6 @@ class Variable extends Operand {
     Expression index = null;
 
     @Override void check(DeclList curDecls) {
-        System.out.println("Is variable");
         Declaration d = curDecls.findDecl(varName,this);
         if (index == null) {
             d.checkWhetherSimpleVar(this);
@@ -1871,7 +1991,17 @@ class Variable extends Operand {
     }
 
     @Override void genCode(FuncDecl curFunc) {
-        //-- Must be changed in part 2:
+        if(index == null){
+            if(valType == Types.doubleType){
+                Code.genInstr("", "fidl", declRef.assemblerName, varName);
+            }
+            else if(valType == Types.intType){
+                Code.genInstr("", "movl", declRef.assemblerName + ", %eax", varName);
+            }
+        }
+        else{
+            index.genCode(curFunc);
+        }
     }
 
     static Variable parse() {
