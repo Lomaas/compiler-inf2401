@@ -1151,16 +1151,8 @@ class IfStatm extends Statement {
         Code.genInstr("", "", "", "Start if-statement");
         test.genCode(curFunc);
         String label = Code.getLocalLabel();
-
-        if(test.valType == Types.intType){
-            Code.genInstr("", "cmpl", "$0, %eax", "");
-        }
-        else if(test.valType == Types.doubleType){
-            Code.genInstr("", "fstps", Code.tmpLabel, "");
-            Code.genInstr("", "cmpl", "$0," + Code.tmpLabel, "");
-        }
-
         test.valType.genJumpIfZero(label);
+
         body.genCode(curFunc);
 
         if(elsePart != null){
@@ -1441,6 +1433,8 @@ class Expression extends Operand {
             secondTerm.check(curDecls);
 
             valType.checkType(secondTerm.lineNum, secondTerm.type, "terms");
+            relOp.opType = valType;
+            valType = Types.intType;
         }
     }
 
@@ -1817,7 +1811,7 @@ class RelOperator extends Operator {
                 Code.genInstr("", "setl", "%al", "Test <");  break;
             case lessEqualToken:
                 Code.genInstr("", "setle", "%al", "Test <=");
-                Code.genInstr("", "cmpl", "$0, %eax", "");  // had to add this for it to work
+//                Code.genInstr("", "cmpl", "$0, %eax", "");  // had to add this for it to work
                 break;
             case greaterToken:
                 Code.genInstr("", "setg", "%al", "Test >");  break;
@@ -1889,6 +1883,7 @@ abstract class Operand extends SyntaxUnit {
  */
 class FunctionCall extends Operand {
     String name;
+    boolean shouldRemoveReturnValue = false;
     ExprList exprList;
     FuncDecl funcDecl = null;
 
@@ -1915,12 +1910,12 @@ class FunctionCall extends Operand {
         exprList.genCode(curFunc);
         Code.genInstr("", "call", funcDecl.assemblerName, "Call " + funcDecl.assemblerName);
 
-        if (funcDecl.type == Types.doubleType){
-            Code.genInstr("", "fstps", Code.tmpLabel, "Remove return valeu");
-        }
         int size = exprList.dataSize();
         if (size > 0){
             Code.genInstr("", "addl", "$" + size + ",%esp", "Remove parameters");
+        }
+        if (funcDecl.type == Types.doubleType && shouldRemoveReturnValue){
+            Code.genInstr("", "fstps", Code.tmpLabel, "Remove return value");
         }
     }
 
@@ -2134,14 +2129,14 @@ class Assignment extends Statement {
             else if (type == Types.doubleType && expression.valType == Types.doubleType){
                 Code.genInstr("", "leal", assemblerName + ", %edx", "");
                 Code.genInstr("", "popl", "%eax", "");
-                Code.genInstr("", "fldl", "(%edx, %eax, 8), %eax", varName + "[..] = ");
+                Code.genInstr("", "fstpl", "(%edx, %eax, 8)", varName + "[..] = ");
             }
             else if(type == Types.doubleType && expression.valType == Types.intType){
                 Code.genInstr("", "leal", assemblerName + ", %edx", "");
                 Code.genInstr("", "popl", "%ecx", "");
                 Code.genInstr("", "movl", "%eax, " + Code.tmpLabel, "");
                 Code.genInstr("", "fildl", Code.tmpLabel, "     (double)");
-                Code.genInstr("", "fistpl", "(%edx, %ecx, 8)", varName + "[..] = ");
+                Code.genInstr("", "fstpl", "(%edx, %ecx, 8)", varName + "[..] = ");
 
             }
             else if(type == Types.intType && expression.valType == Types.doubleType){
@@ -2177,6 +2172,7 @@ class CallStatm extends Statement {
 
     @Override
     void genCode(FuncDecl curFunc) {
+        functCall.shouldRemoveReturnValue = true;
         functCall.genCode(curFunc);
     }
 
